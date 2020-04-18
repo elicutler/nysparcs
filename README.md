@@ -1,5 +1,5 @@
 
-Create `config/secrets.json`, with the following structure:
+For API access to data, create `config/secrets.json`, with the following structure:
 ```
 {
   "socrata": {
