@@ -1,6 +1,10 @@
 
+import logging
 from abc import  abstractmethod
 from overrides import EnforceOverrides, overrides, final
+
+logger = logging.getLogger(__name__)
+
 
 class Trainer(EnforceOverrides):
 
@@ -8,27 +12,29 @@ class Trainer(EnforceOverrides):
   def train(self):
     pass
 
-class TorchTrainer:
   
-  def __init__(
-    epochs, batchSize, modelType, modelParams
-  ):
-    
+class TorchTrainer(Trainer):
+  
   @overrides
   def train(self):
     
-    model = self.loadModel(modelType)
-    params = self.loadParams(modelParams)
+    model = self.loadModel()
+    params = self.loadParams()
     self.fit(model, params)
     
-  def loadModel(self) -> model:
-    pass
+  def loadModel(self):
+    return model
+  
+  def loadParams(self):
+    return params
     
-  def fit(self, model) -> model:
+  def fit(self, model, params=None):
     
     rawData = self.loadData()
     inputData = self.processData()
-    fittedModel = self.optimize()
+    updatedParams = self.optimize()
+    
+    return updatedParams
   
 
   
