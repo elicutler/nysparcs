@@ -1,11 +1,14 @@
 
-from train_arg_parser import TrainArgParser
+from argparse import ArgumentParser
 from trainer import Trainer
 
 if __name__ == '__main__':
-  args = TrainArgParser().parse()
+
+  parser = ArgumentParser()
+  args = parser.parse_args()
+  
   trainer = Trainer(args)
-  trainer.fit()
+  trainer.train()
   trainer.saveModel()
   
   if args.deploy:
