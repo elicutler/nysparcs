@@ -17,10 +17,13 @@ class DataLoaderFactory:
     if dataLoc == 'local':
       DatasetClass = LocalNYSPARCSDataset
     elif dataLoc == 'internet':
+      InternetNYSPARCSDataset
     else:
       raise ValueError(f'{dataLoc=} not recognized')
       
     return DataLoader(dataset)
     
     
-class NYSPARCSDataset(Dataset, EnforceOverrides):
+class NYSPARCSDataset(Dataset):
+  
+  def __init__(self, dataLoc, dataID, batchSize,)
