@@ -27,8 +27,10 @@ if __name__ == '__main__':
   )
   parser.add_argument('--epochs', type=int, default=1)
   parser.add_argument(
-    '--batch_size', type=int, default=-1,
-    help='-1: do not batch data'
+    '--batch_size', type=int, default=-1, help='-1: do not batch data'
+  )
+  parser.add_argument(
+    '--n_workers', type=int, default=-1, help='-1: use all but one core'
   )
   args = parser.parse_args()
   
@@ -36,15 +38,16 @@ if __name__ == '__main__':
   assert bool(args.local_data_path) + bool(args.socrata_data_key) == 1
   
   modelType = 'torch' if args.torch_model is not None else 'sklearn'
-  model = args.torch_model or args.sklearn_model
+  modelName = args.torch_model or args.sklearn_model
   
   dataLoc = 'local' if args.local_data_path is not None else 'internet'
   dataID = args.local_data_path or args.socrata_data_key
     
   trainer = TrainerFactory.make(
-    modelType, model, dataLoc, dataID, trainFromScratch=args.train_from_scratch
+    modelType, modelName, dataLoc, dataID, args.batch_size, args.n_workers,
+    trainFromScratch=args.train_from_scratch
   )
-  trainer.train(args.epochs, args.batch_size)
+  trainer.train(args.epochs)
   trainer.saveModel()
   
   if args.deploy:

@@ -4,7 +4,7 @@ import logging
 
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
-from pathlib import Path
+from torch.utils.data import Dataset, DataLoader
 
 logger = logging.getLogger(__name__)
 
@@ -12,16 +12,15 @@ logger = logging.getLogger(__name__)
 class DataLoaderFactory:
   
   @staticmethod
-  def make(dataLoc, dataID) -> T.Type[DataLoader]:
+  def make(dataLoc, dataID, batchSize, numWorkers) -> T.Type[DataLoader]:
     
     if dataLoc == 'local':
-      return LocalDataLoader(dataD)
+      DatasetClass = LocalNYSPARCSDataset
+    elif dataLoc == 'internet':
+    else:
+      raise ValueError(f'{dataLoc=} not recognized')
+      
+    return DataLoader(dataset)
     
-    raise ValueError(f'{dataLoc=} not recognized')
     
-    
-class DataLoader(EnforceOverrides):
-  
-  @abstractmethod
-  def load(self):
-    pass
+class NYSPARCSDataset(Dataset, EnforceOverrides):
