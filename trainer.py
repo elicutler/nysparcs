@@ -44,8 +44,17 @@ class Trainer(EnforceOverrides):
   def deployModel(self):
     pass
   
+  
+class TorchTrainerMixin:
+  
+  def _loadModel():
+    pass
+  
+  def _initializeWeights():
+    pass
+  
 
-class TorchBatchTrainer(Trainer):
+class TorchBatchTrainer(Trainer, TorchTrainerMixin):
   
   def __init__(
     self, modelName, target, trainFromScratch, dataLoc, dataID, 
@@ -55,7 +64,7 @@ class TorchBatchTrainer(Trainer):
     self.modelName = modelName
     self.trainFromScratch = trainFromScratch
     
-    self.torchDataLoader = NYSPARCSDataProcessorAndLoader(
+    self.dataLoader = ThisDataReaderProcessorLoader(
       target, dataLoc, dataID, trainBatchSize, numWorkers
     )
   
@@ -67,14 +76,28 @@ class TorchBatchTrainer(Trainer):
     
     for e in range(epochs):
       
-      rawData = self.torchDataLoader.load()
-      inputData = self.dataProcessor.process()
-      updatedWeights = self._optimize()
+#       rawData = self.dataLoader.load()
+#       inputData = self.dataProcessor.process()
+#       updatedWeights = self._optimize()
     
-  def _loadModel(self) -> TorchModel:
-    pass
   
-  def _initializeWeights(self) -> TorchWeights:
-    pass
-
-
+class TorchFullTrainer(Trainer, TorchTrainerMixin):
+  
+  def __init__(
+    self, modelName, target, trainFromScratch, dataLoc, dataID, 
+    trainBatchSize, numWorkers
+  ) -> None:
+    
+    self.modelName = modelName
+    self.trainFromScratch = trainFromScratch
+    
+    self.dataReader = DataReaderFactory.make('full', dataLoc, dataID)
+    self.dataProcessor = DataProcessor()
+    self.dataLoader = ThisDataLoader(target, trainBatchSize, numWorkers)
+    
+  @overrides
+  def train(self, epochs):
+    
+    df = self.dataReader.read()
+    model = self._loadModel()
+    initWeights = self._initializeWeights()
