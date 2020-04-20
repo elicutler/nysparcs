@@ -17,6 +17,13 @@ if __name__ == '__main__':
   parser.add_argument('--target', type=str, required=True)
   parser.add_argument('--torch_model', type=str)
   parser.add_argument('--sklearn_model', type=str)
+  parser.add_argument(
+    '--process_in_batch', action='store_true',
+    help=(
+      'Apply data processing within each batch loaded for training.'
+      ' If false, pre-apply data processing to whole dataset before training.'
+    )
+  )
   parser.add_argument('--local_data_path', type=str)
   parser.add_argument('--socrata_data_key', type=str)
   parser.add_argument(
@@ -34,12 +41,8 @@ if __name__ == '__main__':
   parser.add_argument(
     '--n_workers', type=int, default=-1, help='-1: Use all but one core.'
   )
-  parser.add_argument(
-    '--process_in_batch', action='store_true',
-    help=(
-      'Apply data processing within each batch loaded for training.'
-      ' If false, pre-apply data processing to whole dataset before training.'
-  )
+
+  parser.add_argument('--deploy', action='store_true')
   args = parser.parse_args()
   
   assert bool(args.torch_model) + bool(args.sklearn_model) == 1
@@ -52,8 +55,8 @@ if __name__ == '__main__':
   dataID = args.local_data_path or args.socrata_data_key
     
   trainer = TrainerFactory.make(
-    modelType, modelName, args.target, trainFromScratch, dataLoc, dataID, 
-    args.train_batch_size, args.n_workers
+    modelType, args.process_in_batch, modelName, args.target, trainFromScratch,
+    dataLoc, dataID, args.train_batch_size, args.n_workers
   )
   trainer.train(args.epochs)
   trainer.saveModel()

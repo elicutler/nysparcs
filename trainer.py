@@ -13,17 +13,23 @@ class TrainerFactory:
   
   @staticmethod
   def make(
-   modelType, modelName, target, trainFromScratch, dataLoc, dataID, trainBatchSize
+    modelType, processInBatch, modelName, target, trainFromScratch, dataLoc, 
+    dataID, trainBatchSize, numWorkers
   ) -> T.Type[Trainer]:
     
+    trainerArgs = (
+      modelName, target, trainFromScratch, dataLoc, dataId, trainBatchSize,
+      numWorkers
+    )
     if modelType == 'torch':
-      return TorchTrainer(
-        modelName, target, trainFromScratch, dataLoc, dataID, trainBatchSize
-      )
-    else:
-      raise ValueError(f'{modelType=} not recognized')
+      if processInBatch:
+        return TorchBatchTrainer(*trainerArgs)
+      else:
+        return TorchFullTrainer(*trainerArgs)
+        
+    raise ValueError(f'{modelType=} not recognized')
     
-
+  
 class Trainer(EnforceOverrides):
 
   @abstractmethod
@@ -38,16 +44,18 @@ class Trainer(EnforceOverrides):
   def deployModel(self):
     pass
   
-  
-class TorchTrainer(Trainer):
+
+class TorchBatchTrainer(Trainer):
   
   def __init__(
-    self, modelName, target, trainFromScratch, dataLoc, dataID, trainBatchSize 
+    self, modelName, target, trainFromScratch, dataLoc, dataID, 
+    trainBatchSize, numWorkers
   ) -> None:
     
     self.modelName = modelName
     self.trainFromScratch = trainFromScratch
-    self.dataLoader = NYSPARCSDataLoader(
+    
+    self.torchDataLoader = NYSPARCSDataProcessorAndLoader(
       target, dataLoc, dataID, trainBatchSize, numWorkers
     )
   
@@ -59,7 +67,7 @@ class TorchTrainer(Trainer):
     
     for e in range(epochs):
       
-      rawData = self.dataLoader.load()
+      rawData = self.torchDataLoader.load()
       inputData = self.dataProcessor.process()
       updatedWeights = self._optimize()
     
