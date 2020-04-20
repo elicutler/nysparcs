@@ -9,21 +9,21 @@ from torch.utils.data import Dataset, DataLoader
 logger = logging.getLogger(__name__)
 
 
-class DataLoaderFactory:
+# class DataLoaderFactory:
   
-  @staticmethod
-  def make(dataLoc, dataID, batchSize, numWorkers) -> T.Type[DataLoader]:
+#   @staticmethod
+#   def make(dataLoc, dataID, trainBatchSize, numWorkers) -> T.Type[DataLoader]:
     
-    if dataLoc == 'local':
-      DatasetClass = LocalNYSPARCSDataset
-    elif dataLoc == 'internet':
-      InternetNYSPARCSDataset
-    else:
-      raise ValueError(f'{dataLoc=} not recognized')
+#     if dataLoc == 'local':
+#       DatasetClass = LocalNYSPARCSDataset
+#     elif dataLoc == 'internet':
+#       InternetNYSPARCSDataset
+#     else:
+#       raise ValueError(f'{dataLoc=} not recognized')
       
-    return DataLoader(dataset)
+#     return DataLoader(dataset)
     
     
 class NYSPARCSDataset(Dataset):
   
-  def __init__(self, dataLoc, dataID, batchSize,)
+  def __init__(self, target, dataLoc, dataID, trainBatchSize, numWorkers)

@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 if __name__ == '__main__':
 
   parser = ArgumentParser()
+  parser.add_argument('--target', type=str, required=True)
   parser.add_argument('--torch_model', type=str)
   parser.add_argument('--sklearn_model', type=str)
   parser.add_argument('--local_data_path', type=str)
@@ -21,16 +22,23 @@ if __name__ == '__main__':
   parser.add_argument(
     '--train_from_scratch', action='store_true', 
     help=(
-      'If set, do _not_ attempt to load model parameters from prior run'
+      'Do _not_ attempt to load model parameters from prior run'
       ' to initialize parameters for current run.'
     )
   )
   parser.add_argument('--epochs', type=int, default=1)
   parser.add_argument(
-    '--batch_size', type=int, default=-1, help='-1: do not batch data'
+    '--train_batch_size', type=int, default=-1, 
+    help='-1: Do not batch data for training.'
   )
   parser.add_argument(
-    '--n_workers', type=int, default=-1, help='-1: use all but one core'
+    '--n_workers', type=int, default=-1, help='-1: Use all but one core.'
+  )
+  parser.add_argument(
+    '--process_in_batch', action='store_true',
+    help=(
+      'Apply data processing within each batch loaded for training.'
+      ' If false, pre-apply data processing to whole dataset before training.'
   )
   args = parser.parse_args()
   
@@ -44,8 +52,8 @@ if __name__ == '__main__':
   dataID = args.local_data_path or args.socrata_data_key
     
   trainer = TrainerFactory.make(
-    modelType, modelName, dataLoc, dataID, args.batch_size, args.n_workers,
-    trainFromScratch=args.train_from_scratch
+    modelType, modelName, args.target, trainFromScratch, dataLoc, dataID, 
+    args.train_batch_size, args.n_workers
   )
   trainer.train(args.epochs)
   trainer.saveModel()

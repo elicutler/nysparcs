@@ -13,12 +13,12 @@ class TrainerFactory:
   
   @staticmethod
   def make(
-   modelType, modelName, dataLoc, dataID, batchSize, trainFromScratch=False
+   modelType, modelName, target, trainFromScratch, dataLoc, dataID, trainBatchSize
   ) -> T.Type[Trainer]:
     
     if modelType == 'torch':
       return TorchTrainer(
-        modelName, dataLoc, dataID, batchSize, trainFromScratch
+        modelName, target, trainFromScratch, dataLoc, dataID, trainBatchSize
       )
     else:
       raise ValueError(f'{modelType=} not recognized')
@@ -42,12 +42,14 @@ class Trainer(EnforceOverrides):
 class TorchTrainer(Trainer):
   
   def __init__(
-    self, modelName, dataLoc, dataID, batchSize, numWorkers, trainFromScratch=False
+    self, modelName, target, trainFromScratch, dataLoc, dataID, trainBatchSize 
   ) -> None:
     
     self.modelName = modelName
     self.trainFromScratch = trainFromScratch
-    self.dataLoader = NYSPARCSDataLoader(dataLoc, dataID, batchSize, numWorkers)
+    self.dataLoader = NYSPARCSDataLoader(
+      target, dataLoc, dataID, trainBatchSize, numWorkers
+    )
   
   @overrides
   def train(self, epochs):
@@ -57,7 +59,7 @@ class TorchTrainer(Trainer):
     
     for e in range(epochs):
       
-      rawData = self.dataLoader.load(batchSize)
+      rawData = self.dataLoader.load()
       inputData = self.dataProcessor.process()
       updatedWeights = self._optimize()
     
@@ -66,3 +68,5 @@ class TorchTrainer(Trainer):
   
   def _initializeWeights(self) -> TorchWeights:
     pass
+
+
