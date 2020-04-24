@@ -80,7 +80,9 @@ class TrainArgParser:
   def _makeArgsListForParser(self, runConfigs, runID) -> T.List[str]:
     argsDict = {**runConfigs[runID], **{'run_id': runID}}
     listOfTuples = [
-      (f'--{k}', str(v)) for k, v in argsDict.items() if not isinstance(v, bool)
+      (f'--{k}', str(v)) if not isinstance(v, bool) else (f'--{k}',) 
+      for k, v in argsDict.items() 
+      if not (isinstance(v, bool) and v is False)
     ]
     argsList = [e for t in listOfTuples for e in t]
     return argsList

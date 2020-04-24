@@ -28,15 +28,11 @@ class Trainer(EnforceOverrides):
 
 class TorchTrainer(Trainer):
   
-  def __init__(
-    self, modelName, target, trainFromScratch, dataLoc, dataID, 
-    batchSize, numWorkers
-  ) -> None:
+  def __init__(self, params) -> None:
+    self.params = params
     
-    self.modelName = modelName
-    self.trainFromScratch = trainFromScratch
-    
-    self.dataReader = DataReaderFactory.make(dataLoc, dataID)
+    self.dataReader = DataReaderFactory.make(params.copy())
+    breakpoint()
     self.dataProcessor = DataProcessor()
     self.dataset = TorchDataset(target)
     self.dataLoader = DataLoader(
@@ -60,21 +56,24 @@ class TorchTrainer(Trainer):
   
   def _initializeWeights(self):
     pass
+  
+  @overrides
+  def saveModel(self):
+    pass
+  
+  @overrides
+  def deployModel(self):
+    pass
     
   
 class TrainerFactory:
   
   @staticmethod
-  def make(
-    modelType, modelName, target, trainFromScratch, dataLoc, 
-    dataID, batchSize, numWorkers
-  ) -> T.Type[Trainer]:
+  def make(params) -> T.Type[Trainer]:
     
-    trainerArgs = (
-      modelName, target, trainFromScratch, dataLoc, dataId, batchSize,
-      numWorkers
-    )
+    modelType = 'torch' if params['torch_model'] is not None else 'sklearn'
+
     if modelType == 'torch':
-      return TorchTrainer(*trainerArgs)
-        
+      return TorchTrainer(params.copy())
+
     raise ValueError(f'{modelType=} not recognized')

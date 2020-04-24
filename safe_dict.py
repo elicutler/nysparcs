@@ -18,7 +18,6 @@ class SafeDict(dict):
     nsDict = namespace.__dict__
     return cls(nsDict)
     
-
   @overrides
   def copy(self):
     return copy.deepcopy(self)

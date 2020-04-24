@@ -17,26 +17,22 @@ class DataReader(EnforceOverrides):
 
 class LocalDataReader(DataReader):
   
-  def __init__(self, dataID):
-    self.dataID = dataID
+  def __init__(self, params) -> None:
+    self.params = params 
     
   @overrides
   def read(self):
     pass
 
 
-class InternetDataReader(DataReader):
-  
-  def __init__(self, dataID):
-    self.dataID = dataID
-
-
 class DataReaderFactory:
   
   @staticmethod
-  def make(dataLoc, dataID):
+  def make(params) -> T.Type[DataReader]:
+    
+    dataLoc = 'local' if params['local_data_path'] is not None else 'internet'
     
     if dataLoc == 'local':
-      return LocalDataReader(dataID)
+      return LocalDataReader(params.copy())
     
     raise ValueError(f'{dataLoc=} not recognized')

@@ -15,15 +15,9 @@ logger = logging.getLogger(__name__)
 if __name__ == '__main__':
 
   parser = TrainArgParser()
-  args = SafeDict.fromNamespace(parser.parseArgs())
+  params = SafeDict.fromNamespace(parser.parseArgs())
   
-#   modelType = 'torch' if args.torch_model is not None else 'sklearn'
-#   modelName = args.torch_model or args.sklearn_model
-  
-#   dataLoc = 'local' if args.local_data_path is not None else 'internet'
-#   dataID = args.local_data_path or args.socrata_data_key
-    
-  trainer = TrainerFactory.make(args)
+  trainer = TrainerFactory.make(params)
   trainer.train()
   trainer.saveModel()
   

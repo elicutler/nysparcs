@@ -1,11 +1,10 @@
 
 {
-  "fake": {
+  "test": {
     "target": "los",
-    "sklearn_model": "sklearny",
-    "local_data_path": "data/",
-    "batch_size": 4,
-    "train_from_scratch": true
+    "torch_model": "torchy",
+    "local_data_path": "data/Hospital_Inpatient_Discharges__SPARCS_De-Identified___2009.csv",
+    "batch_size": 100
   }
 }
 
