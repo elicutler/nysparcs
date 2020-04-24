@@ -3,7 +3,7 @@
   "fake": {
     "target": "los",
     "sklearn_model": "sklearny",
-    "local_data_path": "d",
+    "local_data_path": "data/",
     "batch_size": 4,
     "train_from_scratch": true
   }

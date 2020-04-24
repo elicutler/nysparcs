@@ -27,6 +27,14 @@ class TrainArgParser:
         ' to initialize parameters for current run.'
       )
     )
+    self.parser.add_argument(
+      '--train_range', type=int, nargs=2, default=[0, 999],
+      help='Index range of training records'
+    )
+    self.parser.add_argument(
+      '--test_range', type=int, nargs=2, default=[1000, 1999],
+      help='Index range of test records'
+    )
     self.parser.add_argument('--epochs', type=int, default=1)
     self.parser.add_argument(
       '--batch_size', type=int, default=-1, 
@@ -82,3 +90,6 @@ class TrainArgParser:
     assert args.target is not None
     assert bool(args.torch_model) + bool(args.sklearn_model) == 1
     assert bool(args.local_data_path) + bool(args.socrata_data_key) == 1
+    assert args.train_range[0] <= args.train_range[1]
+    assert args.test_range[0] <= args.test_range[1]
+    assert args.train_range[1] < args.test_range[0]

@@ -1,9 +1,5 @@
 
 import argparse
-
-p = argparse.ArgumentParser()
-p.add_argument('--a', default='ay')
-p.add_argument('--b', default='bee')
-
-x = p.parse_args(['--a', 'new ay'])
-print(x)
+parser = argparse.ArgumentParser()
+parser.add_argument('--two', nargs=2, type=int, default=[0, 1, 3, 'a'])
+print(parser.parse_args())
