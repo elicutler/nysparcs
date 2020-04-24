@@ -2,6 +2,7 @@
 import logging
 
 from train_arg_parser import TrainArgParser
+from safe_dict import SafeDict
 from trainer import TrainerFactory
 
 logging.basicConfig(
@@ -14,19 +15,16 @@ logger = logging.getLogger(__name__)
 if __name__ == '__main__':
 
   parser = TrainArgParser()
-  args = parser.parseArgs()
+  args = SafeDict.fromNamespace(parser.parseArgs())
   
-  modelType = 'torch' if args.torch_model is not None else 'sklearn'
-  modelName = args.torch_model or args.sklearn_model
+#   modelType = 'torch' if args.torch_model is not None else 'sklearn'
+#   modelName = args.torch_model or args.sklearn_model
   
-  dataLoc = 'local' if args.local_data_path is not None else 'internet'
-  dataID = args.local_data_path or args.socrata_data_key
+#   dataLoc = 'local' if args.local_data_path is not None else 'internet'
+#   dataID = args.local_data_path or args.socrata_data_key
     
-  trainer = TrainerFactory.make(
-    modelType, modelName, args.target, trainFromScratch,
-    dataLoc, dataID, args.batch_size, args.n_workers
-  )
-  trainer.train(args.epochs)
+  trainer = TrainerFactory.make(args)
+  trainer.train()
   trainer.saveModel()
   
   if args.deploy:
