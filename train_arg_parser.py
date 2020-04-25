@@ -54,9 +54,9 @@ class TrainArgParser:
       )
     )
     
-  def parseArgs(self) -> argparse.Namespace:
+  def parseArgs(self, argsInput=None) -> argparse.Namespace:
     
-    rawArgs = self.parser.parse_args()
+    rawArgs = self.parser.parse_args(args=argsInput)
     
     if rawArgs.run_id is None:
       args = rawArgs

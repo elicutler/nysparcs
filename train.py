@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 if __name__ == '__main__':
 
   parser = TrainArgParser()
-  params = SafeDict.fromNamespace(parser.parseArgs())
+  params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'fake']))
   
   trainer = TrainerFactory.make(params)
   trainer.train()
