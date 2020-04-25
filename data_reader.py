@@ -49,7 +49,6 @@ class LocalDataReader(DataReader):
     return df
     
 
-
 class DataReaderFactory:
   
   @staticmethod

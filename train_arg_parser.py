@@ -16,13 +16,18 @@ class TrainArgParser:
     self.parser = argparse.ArgumentParser()
     
     self.parser.add_argument('--target', type=str)
+    self.parser.add_argument(
+      '--features', type=str, nargs='+', default=None, help=(
+        'If None, use all cleaned column names in dataset except for target.'
+        ' (Default: None)'
+      )
+    )
     self.parser.add_argument('--torch_model', type=str)
     self.parser.add_argument('--sklearn_model', type=str)
     self.parser.add_argument('--local_data_path', type=str)
     self.parser.add_argument('--socrata_data_key', type=str)
     self.parser.add_argument(
-      '--train_from_scratch', action='store_true', 
-      help=(
+      '--train_from_scratch', action='store_true', help=(
         'Do _not_ attempt to load model parameters from prior run'
         ' to initialize parameters for current run.'
       )
