@@ -21,9 +21,15 @@ class DataProcessor:
     df = self._floatToIntCols(df)
     df = self._ynToBoolCols(df)
     df = self._objToStrCols(df)
+    df = self._sanatizeStrCols(df)
     df = self._mergeCodeAndDescCols(df)
     df = self._rmTargetOutliers(df)
     return df
   
   def _sanatizeColNames(colNames) -> T.List[str]:
-    return [re.sub('\W', '_', c.lower()) for c in colNames]
+    return [self._sanatizeString for c in colNames]
+  
+  def _sanatizeString(string) -> str:
+    s = string.lower()
+    s = re.sub('\W', '_', s)
+    return s
