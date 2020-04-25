@@ -12,6 +12,6 @@ logger = logging.getLogger(__name__)
 class TorchDataset(Dataset):
   
   def __init__(self, params) -> None:
-    self.params = params
+    self.params = params.copy()
   
   

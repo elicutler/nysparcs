@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class DataReader(EnforceOverrides):
   
   def __init__(self, params) -> None:
-    self.params = params 
+    self.params = params.copy()
   
   @abstractmethod
   def readTrainRange(self) -> pd.DataFrame:
@@ -58,6 +58,6 @@ class DataReaderFactory:
     dataLoc = 'local' if params['local_data_path'] is not None else 'internet'
     
     if dataLoc == 'local':
-      return LocalDataReader(params.copy())
+      return LocalDataReader(params)
     
     raise ValueError(f'{dataLoc=} not recognized')
