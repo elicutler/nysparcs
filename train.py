@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 if __name__ == '__main__':
 
   parser = TrainArgParser()
-  params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'fake']))
+  params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'test']))
   
   trainer = TrainerFactory.make(params)
   trainer.train()
   trainer.saveModel()
   
-  if args.deploy:
+  if params.deploy:
     trainer.deployModel()

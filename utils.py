@@ -1,8 +1,10 @@
 
 import typing as T
 import logging
-import argparse
-import json
+import multiprocessing
 
 logger = logging.getLogger(__name__)
     
+
+def getNumCores() -> int:
+  return multiprocessing.cpu_count()

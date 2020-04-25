@@ -4,15 +4,20 @@ import logging
 
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
-from data_reader import DataReaderFactory
-from torch_dataset import TorchDataset
 from torch.utils.data import DataLoader
+from data_reader import DataReaderFactory
+from data_processor import TorchDataProcessor
+from torch_dataset import TorchDataset
+from utils import getNumCores
 
 logger = logging.getLogger(__name__)
     
   
 class Trainer(EnforceOverrides):
-
+  
+  def __init__(self, params) -> None:
+    self.params = params
+    
   @abstractmethod
   def train(self):
     pass
@@ -27,20 +32,30 @@ class Trainer(EnforceOverrides):
   
 
 class TorchTrainer(Trainer):
-  
+
   def __init__(self, params) -> None:
-    self.params = params
+    super().__init__(params)
     
     self.dataReader = DataReaderFactory.make(params.copy())
-    breakpoint()
-    self.dataProcessor = DataProcessor()
-    self.dataset = TorchDataset(target)
+    self.dataProcessor = TorchDataProcessor(params.copy())
+    self.torchDataset = TorchDataset(params.copy())
+    
+    numWorkers = (
+      getNumCores()-1 if self.params['num_workers'] == -1
+      else self.params['num_workers']
+    )
     self.dataLoader = DataLoader(
-      self.dataset, batch_size=batchSize, num_workers=numWorkers
+      self.torchDataset, 
+      batch_size=self.params['batch_size'], 
+      num_workers=numWorkers
     )
   
   @overrides
-  def train(self, epochs):
+  def train(self):
+    
+    df = self.dataReader.read()
+    df = self.dataProcessor.process(df)
+    self.torchDataset.load(df)
 
     model = self._loadModel()
     initWeights = self._initializeWeights()

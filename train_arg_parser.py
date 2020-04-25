@@ -37,11 +37,11 @@ class TrainArgParser:
     )
     self.parser.add_argument('--epochs', type=int, default=1)
     self.parser.add_argument(
-      '--batch_size', type=int, default=-1, 
-      help='-1: Do not batch data for training. (Default: -1)'
+      '--batch_size', type=int, default=1, 
+      help='-1: Do not batch data for training. (Default: 1)'
     )
     self.parser.add_argument(
-      '--n_workers', type=int, default=-1, 
+      '--num_workers', type=int, default=-1, 
       help='-1: Use all but one core for training. (Default: -1)'
     )
     self.parser.add_argument('--deploy', action='store_true')
