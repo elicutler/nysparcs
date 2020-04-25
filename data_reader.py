@@ -15,8 +15,13 @@ class DataReader(EnforceOverrides):
     self.params = params 
   
   @abstractmethod
-  def read(self) -> pd.DataFrame:
+  def readTrainRange(self) -> pd.DataFrame:
     pass
+  
+  @abstractmethod
+  def readTestRange(self) -> pd.DataFrame:
+    pass
+  
 
 
 class LocalDataReader(DataReader):
@@ -25,14 +30,32 @@ class LocalDataReader(DataReader):
     super().__init__(params)
     
   @overrides
-  def read(self) -> pd.DataFrame:
+  def readTrainRange(self) -> pd.DataFrame:
+    startRow = self.params['train_range'][0]
+    numRows = self.params['train_range'][1] - self.params['train_range'][0]
+    
+    df = self._readNumRowsFromStartRow(startRow, numRows)
+    breakpoint()
+#     df = pd.read_csv(
+#       self.params['local_data_path']
+#       # skiprows, nrows
+#       # lazy read options:
+#       # chunksize=n; for chunk in reader: print(chunk)
+#       # iterator=True -- reader.get_chunk(n)
+#     )
+
+  @overrides
+  def readTestRange(self) -> pd.DataFrame:
+    pass
+    
+  def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
+    colNames = pd.read_csv(self.params['local_data_path'], nrows=0).columns
     df = pd.read_csv(
-      self.params['local_data_path']
-      # skiprows, nrows
-      # lazy read options:
-      # chunksize=n; for chunk in reader: print(chunk)
-      # iterator=True -- reader.get_chunk(n)
+      self.params['local_data_path'], skiprows=startRow-1, nrows=numRows,
+      header=None, names=colNames
     )
+    return df
+    
 
 
 class DataReaderFactory:

@@ -80,7 +80,9 @@ class TrainArgParser:
   def _makeArgsListForParser(self, runConfigs, runID) -> T.List[str]:
     argsDict = {**runConfigs[runID], **{'run_id': runID}}
     listOfTuples = [
-      (f'--{k}', str(v)) if not isinstance(v, bool) else (f'--{k}',) 
+      (f'--{k}', str(v)) if not isinstance(v, (bool, list))
+      else (f'--{k}',) + tuple(str(e) for e in v) if isinstance(v, list)
+      else (f'--{k}',) 
       for k, v in argsDict.items() 
       if not (isinstance(v, bool) and v is False)
     ]
@@ -90,8 +92,14 @@ class TrainArgParser:
   def _validateArgs(self, args) -> None:
         
     assert args.target is not None
+    # pytorch model XOR sklearn model
     assert bool(args.torch_model) + bool(args.sklearn_model) == 1
+    # local data path XOR internet data key
     assert bool(args.local_data_path) + bool(args.socrata_data_key) == 1
+    # non-overlapping train/test intervals with start <= end  
     assert args.train_range[0] <= args.train_range[1]
     assert args.test_range[0] <= args.test_range[1]
-    assert args.train_range[1] < args.test_range[0]
+    assert (
+      (args.train_range[1] <= args.test_range[0])
+      or (args.test_range[1] <= args.train_range[0])
+    )

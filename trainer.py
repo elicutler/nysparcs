@@ -53,7 +53,7 @@ class TorchTrainer(Trainer):
   @overrides
   def train(self):
     
-    df = self.dataReader.read()
+    df = self.dataReader.readTrainRange()
     df = self.dataProcessor.process(df)
     self.torchDataset.load(df)
 

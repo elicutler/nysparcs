@@ -4,7 +4,9 @@
     "target": "los",
     "torch_model": "torchy",
     "local_data_path": "data/Hospital_Inpatient_Discharges__SPARCS_De-Identified___2009.csv",
-    "batch_size": 100
+    "batch_size": 100,
+    "train_range": [100, 1099],
+    "test_range": [1100, 1999]
   }
 }
 
