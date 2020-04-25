@@ -26,7 +26,13 @@ class LocalDataReader(DataReader):
     
   @overrides
   def read(self) -> pd.DataFrame:
-    breakpoint()
+    df = pd.read_csv(
+      self.params['local_data_path']
+      # skiprows, nrows
+      # lazy read options:
+      # chunksize=n; for chunk in reader: print(chunk)
+      # iterator=True -- reader.get_chunk(n)
+    )
 
 
 class DataReaderFactory:
