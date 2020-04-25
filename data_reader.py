@@ -33,16 +33,8 @@ class LocalDataReader(DataReader):
   def readTrainRange(self) -> pd.DataFrame:
     startRow = self.params['train_range'][0]
     numRows = self.params['train_range'][1] - self.params['train_range'][0]
-    
     df = self._readNumRowsFromStartRow(startRow, numRows)
-    breakpoint()
-#     df = pd.read_csv(
-#       self.params['local_data_path']
-#       # skiprows, nrows
-#       # lazy read options:
-#       # chunksize=n; for chunk in reader: print(chunk)
-#       # iterator=True -- reader.get_chunk(n)
-#     )
+    return df
 
   @overrides
   def readTestRange(self) -> pd.DataFrame:
