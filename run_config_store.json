@@ -8,8 +8,8 @@
       "gender",
       "race",
       "type_of_admission",
-      "ccs_dx",
-      "ccs_proc",
+      "ccs_diagnosis",
+      "ccs_procedure",
       "source_of_payment_1",
       "source_of_payment_2",
       "emergency_department_indicator"

@@ -31,6 +31,8 @@ class LocalDataReader(DataReader):
     
   @overrides
   def readTrainRange(self) -> pd.DataFrame:
+    logger.info('Reading data for training...')
+    
     startRow = self.params['train_range'][0]
     numRows = self.params['train_range'][1] - self.params['train_range'][0]
     df = self._readNumRowsFromStartRow(startRow, numRows)
