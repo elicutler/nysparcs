@@ -15,14 +15,9 @@ class DataReader(EnforceOverrides):
     self.params = params.copy()
   
   @abstractmethod
-  def readTrainRange(self) -> pd.DataFrame:
+  def read(self) -> pd.DataFrame:
     pass
   
-  @abstractmethod
-  def readTestRange(self) -> pd.DataFrame:
-    pass
-  
-
 
 class LocalDataReader(DataReader):
   
@@ -30,18 +25,24 @@ class LocalDataReader(DataReader):
     super().__init__(params)
     
   @overrides
-  def readTrainRange(self) -> pd.DataFrame:
-    logger.info('Reading data for training...')
+  def read(self) -> pd.DataFrame:
+    logger.info('Reading data...')
     
-    startRow = self.params['train_range'][0]
-    numRows = self.params['train_range'][1] - self.params['train_range'][0]
-    df = self._readNumRowsFromStartRow(startRow, numRows)
+    trainStart, trainEnd = self.params['train_range']
+    trainDF = self._readNumRowsFromStartRow(
+      trainStart, trainEnd-trainStart
+    )
+    trainDF['train_test'] = 'train'
+    
+    testStart, testEnd = self.params['test_range']
+    testDF = self._readNumRowsFromStartRow(
+      testStart, testEnd-testStart
+    )
+    testDF['train_test'] = 'test'
+    
+    df = trainDF.append(testDF)
     return df
 
-  @overrides
-  def readTestRange(self) -> pd.DataFrame:
-    pass
-    
   def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
     colNames = pd.read_csv(self.params['local_data_path'], nrows=0).columns
     df = pd.read_csv(
@@ -49,6 +50,16 @@ class LocalDataReader(DataReader):
       header=None, names=colNames
     )
     return df
+  
+
+class CloudDataReader(DataReader):
+  
+  def __init__(self, params) -> None:
+    super().__init__(params)
+    
+  @overrides
+  def read(self) -> pd.DataFrame:
+    pass
     
 
 class DataReaderFactory:
@@ -56,9 +67,11 @@ class DataReaderFactory:
   @staticmethod
   def make(params) -> T.Type[DataReader]:
     
-    dataLoc = 'local' if params['local_data_path'] is not None else 'internet'
+    dataLoc = 'local' if params['local_data_path'] is not None else 'cloud'
     
     if dataLoc == 'local':
       return LocalDataReader(params)
+    elif dataLoc == 'cloud':
+      return CloudDataReader(params)
     
     raise ValueError(f'{dataLoc=} not recognized')

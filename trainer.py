@@ -51,12 +51,11 @@ class TorchTrainer(Trainer):
   @overrides
   def train(self):
     
-    df = self.dataReader.readTrainRange()
-    self.dataProcessor.loadDF(df)
+    rawDF = self.dataReader.read()
+    self.dataProcessor.loadDF(rawDF)
     self.dataProcessor.process()
-    df = self.dataProcessor.getDF()
-    return df
-    self.torchDataset.load(df)
+    processedDF = self.dataProcessor.getDF()
+    self.torchDataset.load(processedDF)
 
     model = self._loadModel()
     initWeights = self._initializeWeights()
