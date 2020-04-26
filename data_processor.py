@@ -20,6 +20,7 @@ class DataProcessor:
     
     df = inDF.copy()
     df.columns = self._sanitizeColNames(df.columns)
+    df = self._processLOS(df)
     df = self._floatToIntCols(df)
     df = self._ynToBoolCols(df)
     df = self._objToStrCols(df)
@@ -27,7 +28,7 @@ class DataProcessor:
     df = self._mergeCodeAndDescCols(df)
     df = self._nullInvalidContinuousCols(df)
     df = self._rmTargetOutliers(df)
-    df = self._removeUnusedCols(df)
+    df = self._filterUnusedCols(df)
     return df
   
   def _sanitizeColNames(colNames) -> T.List[str]:
@@ -40,9 +41,17 @@ class DataProcessor:
     s = re.sub('\W', '_', s)
     return s
   
+  def _processLOS(self, inDF) -> pd.DataFrame:
+    df = inDF.copy()
+    losCol = df['length_of_stay']
+    losCol.loc[losCol == '120 +'] = pd.NA
+    losCol = losCol.astype(pd.Int64Dtype())
+    losCol.loc[losCol < 0] = pd.NA
+    return df
+  
   def _floatToIntCols(self, inDF) -> pd.DataFrame:
     df = inDF.copy()
-    floatCols = df.select_dtypes(include=['float'])
+    floatCols = df.select_dtypes(include=['float']).columns
     
     for c in floatCols:
       try:
@@ -60,7 +69,7 @@ class DataProcessor:
     for c in ynCols:
       try:
         logger.info(f'Col \'{c}\' converted from object to bool')
-        df[c] = df.map({'Y': True, 'N': False}).astype(pd.BooleanDtype())
+        df[c] = df[c].map({'Y': True, 'N': False}).astype(pd.BooleanDtype())
       except TypeError as e:
         logger.info(f'Failed to convert col \'{c}\' from object to bool')
         
@@ -68,12 +77,12 @@ class DataProcessor:
   
   def _objToStrCols(self, inDF) -> pd.DataFrame:
     df = inDF.copy()
-    objCols = df.selec_dtypes(include=['object'])
+    objCols = df.selec_dtypes(include=['object']).columns
     
     for c in objCols:
       try:
         logger.info(f'Col \'{c}\' converted from object to string')
-        df[c] = df.astype(pd.StringDtype())
+        df[c] = df[c].astype(pd.StringDtype())
       except TypeError as e:
         logger.info(f'Failed to convert col \'{c}\' from object to string')
         
@@ -81,10 +90,10 @@ class DataProcessor:
   
   def _sanitizeStrCols(self, inDF) -> pd.DataFrame:
     df = inDF.copy()
-    strCols = df.select_dtypes(include=['string'])
+    strCols = df.select_dtypes(include=['string']).column
     
     for c in strCols:
-      df[c] = df.apply(lambda x: self._sanitizeString(x))
+      df[c] = df[c].apply(lambda x: self._sanitizeString(x))
       
     return df
   
@@ -95,16 +104,28 @@ class DataProcessor:
     for c in colStems:
       code = c + '_code'
       desc = c + '_description'
-      codeDescMap = df.groupby(code)[desc].first()
-      codeDescCol = (codeDescMap.index + '_' + codeDescMap).values
+      codeDescMap = df[c].groupby(code)[desc].first()
+      codeDescCol = (codeDescMap.index + '_' + codeDescMap.values)
       df[c] = codeDescCol
     
     return df
+  
+  def _nullInvalidContinuousCols(self, inDF) -> pd.DataFrame:
+    df = inDF.copy()
+    continuousCols = df.select_dtypes(include=['number']).columns
+    
+    for c in continuousCols:
+      df[c].loc[df[c] < 0] = pd.NA
       
-#     df = self._nullInvalidContinuousCols(df)
-#     df = self._rmTargetOutliers(df)
-#     df = self._removeUnusedCols(df)
-
+    return df
+  
+  def _filterTargetOutliers(self, inDF, quantile=0.99) -> pd.DataFrame:
+    df = inDF.copy()
+    target = self.params['target']
+    targetMaxKeep = df[target].quantile(q=quantile)
+    df = df[df[target] <= targetMaxKeep]
+    return df
+    
   def _removeUnusedCols(self, inDF) -> pd.DataFrame:
     df = inDF.copy()
     keepCols = [self.params['target']] + self.params['features']
