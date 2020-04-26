@@ -2,9 +2,11 @@
 import typing as T
 import logging
 import pandas as pd
+import json
 
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
+from sodapy import Socrata
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,10 @@ class DataReader(EnforceOverrides):
   def read(self) -> pd.DataFrame:
     pass
   
+  @abstractmethod
+  def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
+    pass
+  
 
 class LocalDataReader(DataReader):
   
@@ -26,7 +32,7 @@ class LocalDataReader(DataReader):
     
   @overrides
   def read(self) -> pd.DataFrame:
-    logger.info('Reading data...')
+    logger.info('Reading data from local path...')
     
     trainStart, trainEnd = self.params['train_range']
     trainDF = self._readNumRowsFromStartRow(
@@ -43,6 +49,7 @@ class LocalDataReader(DataReader):
     df = trainDF.append(testDF)
     return df
 
+  @overrides
   def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
     colNames = pd.read_csv(self.params['local_data_path'], nrows=0).columns
     df = pd.read_csv(
@@ -56,11 +63,41 @@ class CloudDataReader(DataReader):
   
   def __init__(self, params) -> None:
     super().__init__(params)
+    self.cloudConn = self._establishCloudConn()
     
   @overrides
   def read(self) -> pd.DataFrame:
-    pass
+    logger.info('Reading data from cloud...')
     
+    trainStart, trainEnd = self.params['train_range']
+    trainDF = self._readNumRowsFromStartRow(
+      trainStart, trainEnd-trainStart
+    )
+    trainDF['train_test'] = 'train'
+    
+    testStart, testEnd = self.params['test_range']
+    testDF = self._readNumRowsFromStartRow(
+      testStart, testEnd-testStart
+    )
+    testDF['train_test'] = 'test'
+    
+    df = trainDF.append(testDF)
+    return df
+    
+  @overrides
+  def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
+    socrataDataKey = self.params['socrata_data_key']
+    dataRecs = self.cloudConn.get(
+      socrataDataKey, order=':id', offset=startRow, limit=numRows
+    )
+    df = pd.DataFrame.from_records(dataRecs)
+    return df
+  
+  def _establishCloudConn(self) -> Socrata:
+    with open('config/secrets.json', 'r') as f:
+      appToken = json.load(f)['socrata']['app_token']
+    return Socrata('health.data.ny.gov', appToken)
+                
 
 class DataReaderFactory:
   

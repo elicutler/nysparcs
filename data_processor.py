@@ -46,7 +46,7 @@ class DataProcessor:
     s = string.lower()
     s = re.sub('^\W+', '', s)
     s = re.sub('\W+$', '', s)
-    s = re.sub('\W', '_', s)
+    s = re.sub('\W+', '_', s)
     return s
   
   def _processLOS(self) -> None:
@@ -126,7 +126,7 @@ class DataProcessor:
     )
   
   def _removeUnusedCols(self) -> None:
-    keepCols = [self.params['target']] + self.params['features']
+    keepCols = ['train_test', self.params['target']] + self.params['features']
     logger.info(
       f'Removing cols: {[c for c in self.df.columns if c not in keepCols]}'
     )

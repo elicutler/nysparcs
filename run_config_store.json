@@ -1,6 +1,6 @@
 
 {
-  "test": {
+  "test_local": {
     "target": "prior_auth_dispo",
     "features": [
       "hospital_county",
@@ -19,6 +19,25 @@
     "batch_size": 100,
     "train_range": [100, 1099],
     "test_range": [1100, 1999]
+  },
+  "test_cloud": {
+    "target": "prior_auth_dispo",
+    "features": [
+      "hospital_county",
+      "age_group",
+      "gender",
+      "race",
+      "type_of_admission",
+      "ccs_diagnosis",
+      "ccs_procedure",
+      "source_of_payment_1",
+      "source_of_payment_2",
+      "emergency_department_indicator"
+    ],
+    "torch_model": "torchy",
+    "socrata_data_key": "q6hk-esrj",
+    "batch_size": 100,
+    "train_range": [100, 1099],
+    "test_range": [1100, 1999]
   }
 }
-
