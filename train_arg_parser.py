@@ -99,7 +99,7 @@ class TrainArgParser:
 
   def _validateArgs(self, args) -> None:
         
-    assert args.target is not None
+    assert args.target in ['prior_auth_dispo', 'length_of_stay']
     # pytorch model XOR sklearn model
     assert bool(args.torch_model) + bool(args.sklearn_model) == 1
     # local data path XOR internet data key

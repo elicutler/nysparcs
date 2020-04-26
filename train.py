@@ -20,7 +20,7 @@ if __name__ == '__main__':
   params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'test']))
   
   trainer = TrainerFactory.make(params)
-  trainer.train()
+  df = trainer.train()
   trainer.saveModel()
   
   if params.deploy:

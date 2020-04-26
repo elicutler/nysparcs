@@ -1,7 +1,7 @@
 
 {
   "test": {
-    "target": "length_of_stay",
+    "target": "prior_auth_dispo",
     "features": [
       "hospital_county",
       "age_group",

@@ -3,9 +3,11 @@ import typing as T
 import logging
 import re
 import pandas as pd
+import numpy as np
 
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
+from pandas.api.types import is_numeric_dtype
 
 logger = logging.getLogger(__name__)
 
@@ -14,119 +16,145 @@ class DataProcessor:
   
   def __init__(self, params) -> None:
     self.params = params.copy()
+    self.df = None
     
-  def process(self, inDF) -> pd.DataFrame:
+  def loadDF(self, inDF) -> None:
+    self.df = inDF.copy()
+    
+  def process(self) -> None:
     logger.info('Processing data...')
     
-    df = inDF.copy()
-    df.columns = self._sanitizeColNames(df.columns)
-    df = self._processLOS(df)
-    df = self._floatToIntCols(df)
-    df = self._ynToBoolCols(df)
-    df = self._objToStrCols(df)
-    df = self._sanitizeStrCols(df)
-    df = self._mergeCodeAndDescCols(df)
-    df = self._nullInvalidContinuousCols(df)
-    df = self._rmTargetOutliers(df)
-    df = self._filterUnusedCols(df)
-    return df
+    self.df.columns = self._sanitizeColNames(self.df.columns)
+    self._processLOS()
+    self._floatToIntCols()
+    self._ynToBoolCols()
+    self._objToStrCols()
+    self._sanitizeStrCols()
+    self._mergeCodeAndDescCols()
+    self._makePriorAuthDispo()
+    self._removeUnusedCols()
+    self._nullifyInvalidNumericCols()
+    self._filterNumericOutliers()
   
-  def _sanitizeColNames(colNames) -> T.List[str]:
+  def getDF(self) -> pd.DataFrame:
+    return self.df.copy()
+  
+  def _sanitizeColNames(self,colNames) -> T.List[str]:
     return [self._sanitizeString(c) for c in colNames]
   
-  def _sanitizeString(string) -> str:
+  def _sanitizeString(self, string) -> str:
     s = string.lower()
     s = re.sub('^\W+', '', s)
     s = re.sub('\W+$', '', s)
     s = re.sub('\W', '_', s)
     return s
   
-  def _processLOS(self, inDF) -> pd.DataFrame:
-    df = inDF.copy()
-    losCol = df['length_of_stay']
-    losCol.loc[losCol == '120 +'] = pd.NA
-    losCol = losCol.astype(pd.Int64Dtype())
+  def _processLOS(self) -> None:
+    losColName = 'length_of_stay'
+    losCol = self.df[losColName].copy()
+    losCol.loc[losCol == '120 +'] = np.nan
+    losCol = losCol.astype(np.float64).astype(pd.Int64Dtype())
     losCol.loc[losCol < 0] = pd.NA
-    return df
+    self.df[losColName] = losCol
   
-  def _floatToIntCols(self, inDF) -> pd.DataFrame:
-    df = inDF.copy()
-    floatCols = df.select_dtypes(include=['float']).columns
+  def _floatToIntCols(self) -> None:
+    floatCols = self.df.select_dtypes(include=['float']).columns
     
     for c in floatCols:
       try:
-        df[c] = df[c].astype(pd.Int64Dtype())
+        self.df[c] = self.df[c].astype(pd.Int64Dtype())
         logger.info(f'Col \'{c}\' converted from float to int')
       except TypeError as e:
         logger.info(f'Failed to convert col \'{c}\' from float to int')
-        
-    return df
   
-  def _ynToBoolCols(self, inDF) -> pd.DataFrame:
-    df = inDF.copy()
+  def _ynToBoolCols(self) -> None:
     ynCols = ['abortion_edit_indicator', 'emergency_department_indicator']
     
     for c in ynCols:
       try:
         logger.info(f'Col \'{c}\' converted from object to bool')
-        df[c] = df[c].map({'Y': True, 'N': False}).astype(pd.BooleanDtype())
+        self.df[c] = (
+          self.df[c].map({'Y': True, 'N': False}).astype(pd.BooleanDtype())
+        )
       except TypeError as e:
         logger.info(f'Failed to convert col \'{c}\' from object to bool')
         
-    return df
-  
-  def _objToStrCols(self, inDF) -> pd.DataFrame:
-    df = inDF.copy()
-    objCols = df.selec_dtypes(include=['object']).columns
+  def _objToStrCols(self) -> None:
+    objCols = self.df.select_dtypes(include=['object']).columns
     
     for c in objCols:
       try:
         logger.info(f'Col \'{c}\' converted from object to string')
-        df[c] = df[c].astype(pd.StringDtype())
+        self.df[c] = self.df[c].astype(pd.StringDtype())
       except TypeError as e:
         logger.info(f'Failed to convert col \'{c}\' from object to string')
-        
-    return df
   
-  def _sanitizeStrCols(self, inDF) -> pd.DataFrame:
-    df = inDF.copy()
-    strCols = df.select_dtypes(include=['string']).column
+  def _sanitizeStrCols(self) -> None:
+    strCols = self.df.select_dtypes(include=['string']).columns
     
     for c in strCols:
-      df[c] = df[c].apply(lambda x: self._sanitizeString(x))
+      self.df[c] = self.df[c].apply(
+        lambda x: self._sanitizeString(x) if isinstance(x, str) else x
+      )
       
-    return df
-  
-  def _mergeCodeAndDescCols(self, inDF) -> pd.DataFrame:
-    df = inDF.copy()
+  def _mergeCodeAndDescCols(self) -> None:
     colStems = ['ccs_diagnosis', 'ccs_procedure']
     
     for c in colStems:
       code = c + '_code'
       desc = c + '_description'
-      codeDescMap = df[c].groupby(code)[desc].first()
-      codeDescCol = (codeDescMap.index + '_' + codeDescMap.values)
-      df[c] = codeDescCol
-    
-    return df
+      codeDescMap = self.df.groupby(code, as_index=False)[desc].first()
+      codeDescMap['merged'] = (
+        codeDescMap[code].astype(str).values + '_' + codeDescMap[desc]
+      )
+      codeDescMergedMap = codeDescMap.set_index(code)['merged']
+      self.df[c] = self.df[code].map(codeDescMergedMap)
   
-  def _nullInvalidContinuousCols(self, inDF) -> pd.DataFrame:
-    df = inDF.copy()
-    continuousCols = df.select_dtypes(include=['number']).columns
+  def _makePriorAuthDispo(self) -> None:
+    priorAuthDispos = [ 
+      'home_w__home_health_services',
+      'inpatient_rehabilitation_facility',
+      'psychiatric_hospital_or_unit_of_hosp',
+      'skilled_nursing_home'
+    ]
+    self.df['prior_auth_dispo'] = (
+      self.df['patient_disposition'].apply(
+        lambda x: pd.NA if pd.isna(x) 
+        else True if x in priorAuthDispos 
+        else False
+      ).astype(pd.BooleanDtype())
+    )
+  
+  def _removeUnusedCols(self) -> None:
+    keepCols = [self.params['target']] + self.params['features']
+    logger.info(
+      f'Removing cols: {[c for c in self.df.columns if c not in keepCols]}'
+    )
+    self.df = self.df[keepCols]
+  
+  def _nullifyInvalidNumericCols(self) -> None:
+    continuousCols = self.df.select_dtypes(include=['number']).columns
     
     for c in continuousCols:
-      df[c].loc[df[c] < 0] = pd.NA
-      
-    return df
-  
-  def _filterTargetOutliers(self, inDF, quantile=0.99) -> pd.DataFrame:
-    df = inDF.copy()
-    target = self.params['target']
-    targetMaxKeep = df[target].quantile(q=quantile)
-    df = df[df[target] <= targetMaxKeep]
-    return df
+      self.df.loc[self.df[c] < 0, c] = pd.NA
     
-  def _removeUnusedCols(self, inDF) -> pd.DataFrame:
-    df = inDF.copy()
-    keepCols = [self.params['target']] + self.params['features']
-    return df[keepCols]
+  def _filterNumericOutliers(self, quantile=0.99) -> None:
+    numCols = [
+      c for c in self.df.columns 
+      if is_numeric_dtype(self.df[c]) 
+      and not self.df[c].dtype == pd.BooleanDtype()
+    ]
+    for c in numCols:
+      initNumRows = self.df.shape[0]
+      
+      maxKeepVal = self.df[c].quantile(q=quantile)
+      self.df = self.df[self.df[c] <= maxKeepVal]
+      
+      rmNumRows = self.df.shape[0] - initNumRows
+      logger.info(
+        f'Removed {rmNumRows}/{initNumRows} rows with \'{c}\''
+        f' beyond {quantile=} value.'
+      )
+  
+
+    

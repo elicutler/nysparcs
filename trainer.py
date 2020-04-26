@@ -52,7 +52,10 @@ class TorchTrainer(Trainer):
   def train(self):
     
     df = self.dataReader.readTrainRange()
-    df = self.dataProcessor.process(df)
+    self.dataProcessor.loadDF(df)
+    self.dataProcessor.process()
+    df = self.dataProcessor.getDF()
+    return df
     self.torchDataset.load(df)
 
     model = self._loadModel()
