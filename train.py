@@ -17,8 +17,7 @@ if __name__ == '__main__':
   logger.info('Starting analysis...')
 
   parser = TrainArgParser()
-#   params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'test_local']))
-  params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'test_cloud']))
+  params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'test_local']))
   
   trainer = TrainerFactory.make(params)
   df = trainer.train()
