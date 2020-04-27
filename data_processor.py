@@ -17,6 +17,7 @@ class DataProcessor:
   def __init__(self, params) -> None:
     self.params = params.copy()
     self.df = None
+    self.scikitPipeline = None
     
   def loadDF(self, inDF) -> None:
     self.df = inDF.copy()
@@ -36,6 +37,9 @@ class DataProcessor:
     self._nullifyInvalidNumericCols()
     self._filterNumericOutliers()
     self.df.reset_index(drop=True, inplace=True)
+    
+  def fitScikitPipeline(self) -> None:
+    breakpoint()
   
   def getTrainTestDFs(self) -> T.Tuple[pd.DataFrame]:
     trainDF = (

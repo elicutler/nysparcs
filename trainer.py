@@ -45,7 +45,9 @@ class TorchTrainer(Trainer):
     rawDF = self.dataReader.read()
     self.dataProcessor.loadDF(rawDF)
     self.dataProcessor.process()
-    trainDF, testDF = self.dataProcessor.getDF()
+    self.dataProcessor.fitScikitPipeline()
+    
+    trainDF, testDF = self.dataProcessor.getTrainTestDFs()
     
     trainDataset = TorchDataset(trainDF, self.params['target'])
     trainLoader = DataLoader(
