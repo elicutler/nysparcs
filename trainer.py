@@ -47,7 +47,7 @@ class TorchTrainer(Trainer):
     self.dataProcessor.process()
     trainDF, testDF = self.dataProcessor.getDF()
     
-    trainDataset = TorchDataset(trainDF)
+    trainDataset = TorchDataset(trainDF, self.params['target'])
     trainLoader = DataLoader(
       trainDataset, batch_size=self.params['batch_size'],
       num_workers=(
@@ -56,7 +56,7 @@ class TorchTrainer(Trainer):
       )
     )
     
-    testDataset = TorchDatset(testDF)
+    testDataset = TorchDatset(testDF, self.params['target'])
     testLoader = DataLoader(
       testDataset, batch_size=len(testDataset),
       num_workers=(
