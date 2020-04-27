@@ -38,15 +38,6 @@ class TorchTrainer(Trainer):
     
     self.dataReader = DataReaderFactory.make(params)
     self.dataProcessor = DataProcessor(params)
-    self.torchDataset = TorchDataset(params.copy())
-    self.dataLoader = DataLoader(
-      self.torchDataset, 
-      batch_size=self.params['batch_size'], 
-      num_workers=(
-        getNumCores()-1 if self.params['num_workers'] == -1
-        else self.params['num_workers']
-      )
-    )
   
   @overrides
   def train(self):
@@ -54,9 +45,26 @@ class TorchTrainer(Trainer):
     rawDF = self.dataReader.read()
     self.dataProcessor.loadDF(rawDF)
     self.dataProcessor.process()
-    processedDF = self.dataProcessor.getDF()
-    self.torchDataset.load(processedDF)
-
+    trainDF, testDF = self.dataProcessor.getDF()
+    
+    trainDataset = TorchDataset(trainDF)
+    trainLoader = DataLoader(
+      trainDataset, batch_size=self.params['batch_size'],
+      num_workers=(
+        getNumCores()-1 if self.params['num_workers'] == -1
+        else self.params['num_workers']
+      )
+    )
+    
+    testDataset = TorchDatset(testDF)
+    testLoader = DataLoader(
+      testDataset, batch_size=len(testDataset),
+      num_workers=(
+        getNumCores()-1 if self.params['num_workers'] == -1
+        else self.params['num_workers']
+      )
+    )
+    
     model = self._loadModel()
     initWeights = self._initializeWeights()
     

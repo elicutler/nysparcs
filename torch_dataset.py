@@ -11,7 +11,13 @@ logger = logging.getLogger(__name__)
 
 class TorchDataset(Dataset):
   
-  def __init__(self, params) -> None:
-    self.params = params.copy()
+  def __init__(self, inDF) -> None:
+    self.df = inDF.copy()
+    
+  def __len__(self) -> int:
+    return self.df.shape[0]
+  
+  def __getitem__(self, idx) -> pd.Series:
+    return self.df.iloc[idx]
   
   

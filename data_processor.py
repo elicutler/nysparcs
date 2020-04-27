@@ -35,9 +35,20 @@ class DataProcessor:
     self._removeUnusedCols()
     self._nullifyInvalidNumericCols()
     self._filterNumericOutliers()
+    self.df.reset_index(drop=True, inplace=True)
   
-  def getDF(self) -> pd.DataFrame:
-    return self.df.copy()
+  def getTrainTestDFs(self) -> T.Tuple[pd.DataFrame]:
+    trainDF = (
+      self.df[self.df['train_test'] == 'train']
+      .drop(columns=['train_test'])
+      .reset_index(drop=True)
+    )
+    testDF = (
+      self.df[self.df['train_test'] == 'test']
+      .drop(columns=['train_test'])
+      .reset_index(drop=True)
+    )
+    return trainDF, testDF
   
   def _sanitizeColNames(self,colNames) -> T.List[str]:
     return [self._sanitizeString(c) for c in colNames]

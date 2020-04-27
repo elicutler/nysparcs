@@ -59,15 +59,15 @@ class LocalDataReader(DataReader):
     return df
   
 
-class CloudDataReader(DataReader):
+class SocrataDataReader(DataReader):
   
   def __init__(self, params) -> None:
     super().__init__(params)
-    self.cloudConn = self._establishCloudConn()
+    self.socrataConn = self._establishSocrataConn()
     
   @overrides
   def read(self) -> pd.DataFrame:
-    logger.info('Reading data from cloud...')
+    logger.info('Reading data from socrata...')
     
     trainStart, trainEnd = self.params['train_range']
     trainDF = self._readNumRowsFromStartRow(
@@ -87,13 +87,13 @@ class CloudDataReader(DataReader):
   @overrides
   def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
     socrataDataKey = self.params['socrata_data_key']
-    dataRecs = self.cloudConn.get(
+    dataRecs = self.socrataConn.get(
       socrataDataKey, order=':id', offset=startRow, limit=numRows
     )
     df = pd.DataFrame.from_records(dataRecs)
     return df
   
-  def _establishCloudConn(self) -> Socrata:
+  def _establishSocrataConn(self) -> Socrata:
     with open('config/secrets.json', 'r') as f:
       appToken = json.load(f)['socrata']['app_token']
     return Socrata('health.data.ny.gov', appToken)
@@ -104,11 +104,11 @@ class DataReaderFactory:
   @staticmethod
   def make(params) -> T.Type[DataReader]:
     
-    dataLoc = 'local' if params['local_data_path'] is not None else 'cloud'
+    dataLoc = 'local' if params['local_data_path'] is not None else 'socrata'
     
     if dataLoc == 'local':
       return LocalDataReader(params)
-    elif dataLoc == 'cloud':
-      return CloudDataReader(params)
+    elif dataLoc == 'socrata':
+      return SocrataDataReader(params)
     
     raise ValueError(f'{dataLoc=} not recognized')
