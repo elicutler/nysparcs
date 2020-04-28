@@ -29,7 +29,6 @@ class DataProcessor:
     self.scikitPipeline = None
     
   def loadDF(self, inDF) -> None:
-    breakpoint()
     self.df = inDF.copy()
     
   def process(self) -> None:
@@ -37,7 +36,6 @@ class DataProcessor:
     
     self.df.columns = self._sanitizeColNames(self.df.columns)
     self._processLOS()
-    breakpoint()
     self._floatToIntCols()
     self._ynToBoolCols()
     self._objToStrCols()
@@ -50,9 +48,9 @@ class DataProcessor:
     self.df.reset_index(drop=True, inplace=True)
     
   def fitScikitPipeline(self) -> None:
-    numPipe = Pipeline([
-      ()
-    ])
+#     numPipe = Pipeline([
+#       ()
+#     ])
     breakpoint()
 
     
@@ -185,15 +183,16 @@ class DataProcessor:
   
   def _nullifyInvalidNumericCols(self) -> None:
     continuousCols = self.df.select_dtypes(include=['number']).columns
-    
     for c in continuousCols:
-      self.df.loc[self.df[c] < 0, c] = pd.NA
+      self.df.loc[self.df[c] < 0, c] = np.nan
     
   def _filterNumericOutliers(self, quantile=0.99) -> None:
     numCols = [
       c for c in self.df.columns 
       if is_numeric_dtype(self.df[c]) 
-      and not self.df[c].dtype == pd.BooleanDtype()
+      # comparison of numpy dtypes to pd.BooleanDtype() fails,
+      # so need to test for boolean col differently
+      and not self.df[c].isin([False, True, pd.NA]).all()
     ]
     for c in numCols:
       initNumRows = self.df.shape[0]
@@ -201,7 +200,7 @@ class DataProcessor:
       maxKeepVal = self.df[c].quantile(q=quantile)
       self.df = self.df[self.df[c] <= maxKeepVal]
       
-      rmNumRows = self.df.shape[0] - initNumRows
+      rmNumRows = initNumRows - self.df.shape[0]
       logger.info(
         f'Removed {rmNumRows}/{initNumRows} rows with \'{c}\''
         f' beyond {quantile=} value.'
