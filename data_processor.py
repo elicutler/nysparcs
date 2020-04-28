@@ -8,6 +8,15 @@ import numpy as np
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from pandas.api.types import is_numeric_dtype
+from sklearn.impute import SimpleImputer, MissingIndicator
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.compose import ColumnTransformer
+from sklearn.linear_model import ElasticNet, SGDClassifier
+from sklearn.ensemble import (
+    RandomForestRegressor, GradientBoostingRegressor,
+    RandomForestClassifier, GradientBoostingClassifier
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +29,7 @@ class DataProcessor:
     self.scikitPipeline = None
     
   def loadDF(self, inDF) -> None:
+    breakpoint()
     self.df = inDF.copy()
     
   def process(self) -> None:
@@ -27,6 +37,7 @@ class DataProcessor:
     
     self.df.columns = self._sanitizeColNames(self.df.columns)
     self._processLOS()
+    breakpoint()
     self._floatToIntCols()
     self._ynToBoolCols()
     self._objToStrCols()
@@ -39,7 +50,32 @@ class DataProcessor:
     self.df.reset_index(drop=True, inplace=True)
     
   def fitScikitPipeline(self) -> None:
+    numPipe = Pipeline([
+      ()
+    ])
     breakpoint()
+
+    
+#            catEncoder = self._getCatEncoder(catEncoderStrat)
+#         numPipe = Pipeline([
+#             ('numImputer', SimpleImputer(strategy=numImputerStrat)),
+#             ('numScaler', StandardScaler())
+#         ])
+#         catPipe = Pipeline([
+#             ('catImputer', SimpleImputer(strategy='most_frequent')),
+#             ('catEncoder', catEncoder)
+#         ])
+#         numCatPipe = ColumnTransformer([
+#             ('numPipe', numPipe, self.numFeatures),
+#             ('catPipe', catPipe, self.catFeatures)
+#         ])
+#         preprocessor = FeatureUnion([
+#             ('numCatPipe', numCatPipe),
+#             ('missingFlagger', 
+#              MissingIndicator(missing_values=missingValues, features='all')
+#             )
+#         ])
+
   
   def getTrainTestDFs(self) -> T.Tuple[pd.DataFrame]:
     trainDF = (

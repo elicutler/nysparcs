@@ -12,7 +12,8 @@
       "ccs_procedure",
       "source_of_payment_1",
       "source_of_payment_2",
-      "emergency_department_indicator"
+      "emergency_department_indicator",
+      "total_charges"
     ],
     "torch_model": "torchy",
     "local_data_path": "data/Hospital_Inpatient_Discharges__SPARCS_De-Identified___2009.csv",
@@ -32,7 +33,8 @@
       "ccs_procedure",
       "source_of_payment_1",
       "source_of_payment_2",
-      "emergency_department_indicator"
+      "emergency_department_indicator",
+      "total_charges"
     ],
     "torch_model": "torchy",
     "socrata_data_key": "q6hk-esrj",
