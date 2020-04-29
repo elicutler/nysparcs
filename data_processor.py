@@ -8,15 +8,15 @@ import numpy as np
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from pandas.api.types import is_numeric_dtype
-from sklearn.impute import SimpleImputer, MissingIndicator
+from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import ElasticNet, SGDClassifier
-from sklearn.ensemble import (
-    RandomForestRegressor, GradientBoostingRegressor,
-    RandomForestClassifier, GradientBoostingClassifier
-)
+# from sklearn.linear_model import ElasticNet, SGDClassifier
+# from sklearn.ensemble import (
+#     RandomForestRegressor, GradientBoostingRegressor,
+#     RandomForestClassifier, GradientBoostingClassifier
+# )
 
 logger = logging.getLogger(__name__)
 
@@ -38,42 +38,41 @@ class DataProcessor:
     self._processLOS()
     self._floatToIntCols()
     self._ynToBoolCols()
-    self._objToStrCols()
-    self._sanitizeStrCols()
     self._mergeCodeAndDescCols()
     self._makePriorAuthDispo()
+    self._objToStrCols()
+    self._sanitizeStrCols()
     self._removeUnusedCols()
     self._nullifyInvalidNumericCols()
     self._filterNumericOutliers()
     self.df.reset_index(drop=True, inplace=True)
     
   def fitScikitPipeline(self) -> None:
-#     numPipe = Pipeline([
-#       ()
-#     ])
-    breakpoint()
-
     
-#            catEncoder = self._getCatEncoder(catEncoderStrat)
-#         numPipe = Pipeline([
-#             ('numImputer', SimpleImputer(strategy=numImputerStrat)),
-#             ('numScaler', StandardScaler())
-#         ])
-#         catPipe = Pipeline([
-#             ('catImputer', SimpleImputer(strategy='most_frequent')),
-#             ('catEncoder', catEncoder)
-#         ])
-#         numCatPipe = ColumnTransformer([
-#             ('numPipe', numPipe, self.numFeatures),
-#             ('catPipe', catPipe, self.catFeatures)
-#         ])
-#         preprocessor = FeatureUnion([
-#             ('numCatPipe', numCatPipe),
-#             ('missingFlagger', 
-#              MissingIndicator(missing_values=missingValues, features='all')
-#             )
-#         ])
-
+    trainX = (
+      self.df[self.df['train_test'] == 'train']
+      .drop(columns=['train_test', self.params['target']])
+    )
+    numFeatureCols = trainX.select_dtypes(include=['number']).columns
+    catFeatureCols = trainX.select_dtypes(include=['string', 'boolean']).columns
+    trainY = (
+      self.df.loc[
+        self.df['train_test'] == 'train', self.params['target']
+      ]
+    )    
+    numPipe = Pipeline([
+      ('imputer', SimpleImputer(strategy='median', add_indicator=True)),
+      ('scaler', StandardScaler())
+    ])
+    catPipe = Pipeline([
+      ('imputer', SimpleImputer(strategy='constant', fill_value='__UNK__')),
+      ('cat_encoder', OneHotEncoder(handle_unknown='ignore'))
+    ])
+    scikitPipeline = ColumnTransformer([
+      ('num_pipe', numPipe, numFeatureCols),
+      ('cat_pipe', catPipe, catFeatureCols)
+    ])
+    breakpoint()
   
   def getTrainTestDFs(self) -> T.Tuple[pd.DataFrame]:
     trainDF = (
@@ -142,8 +141,11 @@ class DataProcessor:
     strCols = self.df.select_dtypes(include=['string']).columns
     
     for c in strCols:
-      self.df[c] = self.df[c].apply(
-        lambda x: self._sanitizeString(x) if isinstance(x, str) else x
+      self.df[c] = (
+        self.df[c].apply(
+          lambda x: self._sanitizeString(x) if isinstance(x, str) else x
+        )
+        .astype(pd.StringDtype())
       )
       
   def _mergeCodeAndDescCols(self) -> None:
