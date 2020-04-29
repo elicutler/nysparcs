@@ -37,7 +37,6 @@ class DataProcessor:
     self.df.columns = self._sanitizeColNames(self.df.columns)
     self._processLOS()
     self._floatToIntCols()
-    self._ynToBoolCols()
     self._mergeCodeAndDescCols()
     self._makePriorAuthDispo()
     self._objToStrCols()
@@ -54,7 +53,7 @@ class DataProcessor:
       .drop(columns=['train_test', self.params['target']])
     )
     numFeatureCols = trainX.select_dtypes(include=['number']).columns
-    catFeatureCols = trainX.select_dtypes(include=['string', 'boolean']).columns
+    catFeatureCols = trainX.select_dtypes(include=['string']).columns
     trainY = (
       self.df.loc[
         self.df['train_test'] == 'train', self.params['target']
@@ -72,6 +71,7 @@ class DataProcessor:
       ('num_pipe', numPipe, numFeatureCols),
       ('cat_pipe', catPipe, catFeatureCols)
     ])
+    scikitPipeline.fit(trainX)
     breakpoint()
   
   def getTrainTestDFs(self) -> T.Tuple[pd.DataFrame]:
@@ -115,18 +115,6 @@ class DataProcessor:
       except TypeError as e:
         logger.info(f'Failed to convert col \'{c}\' from float to int')
   
-  def _ynToBoolCols(self) -> None:
-    ynCols = ['abortion_edit_indicator', 'emergency_department_indicator']
-    
-    for c in ynCols:
-      try:
-        logger.info(f'Col \'{c}\' converted from object to bool')
-        self.df[c] = (
-          self.df[c].map({'Y': True, 'N': False}).astype(pd.BooleanDtype())
-        )
-      except TypeError as e:
-        logger.info(f'Failed to convert col \'{c}\' from object to bool')
-        
   def _objToStrCols(self) -> None:
     objCols = self.df.select_dtypes(include=['object']).columns
     
@@ -171,9 +159,9 @@ class DataProcessor:
     self.df['prior_auth_dispo'] = (
       self.df['patient_disposition'].apply(
         lambda x: pd.NA if pd.isna(x) 
-        else True if x in priorAuthDispos 
-        else False
-      ).astype(pd.BooleanDtype())
+        else 'Y' if x in priorAuthDispos 
+        else 'N'
+      ).astype(pd.StringDtype())
     )
   
   def _removeUnusedCols(self) -> None:
