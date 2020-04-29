@@ -26,6 +26,7 @@ class DataProcessor:
   def __init__(self, params) -> None:
     self.params = params.copy()
     self.df = None
+    self.trainFeatures = None
     self.scikitPipeline = None
     
   def loadDF(self, inDF) -> None:
@@ -33,13 +34,13 @@ class DataProcessor:
     
   def process(self) -> None:
     logger.info('Processing data...')
+    assert self.df is not None, 'First call self.loadDF()'
     
     self.df.columns = self._sanitizeColNames(self.df.columns)
     self._processLOS()
     self._floatToIntCols()
     self._mergeCodeAndDescCols()
     self._makePriorAuthDispo()
-    self._objToStrCols()
     self._sanitizeStrCols()
     self._removeUnusedCols()
     self._nullifyInvalidNumericCols()
@@ -48,17 +49,13 @@ class DataProcessor:
     
   def fitScikitPipeline(self) -> None:
     
-    trainX = (
-      self.df[self.df['train_test'] == 'train']
-      .drop(columns=['train_test', self.params['target']])
-    )
+    trainDF, _ = self.getTrainTestDFs()
+    trainX = trainDF.drop(columns=[self.params['target']])
+    trainY = trainDF[self.params['target']]
+    
     numFeatureCols = trainX.select_dtypes(include=['number']).columns
-    catFeatureCols = trainX.select_dtypes(include=['string']).columns
-    trainY = (
-      self.df.loc[
-        self.df['train_test'] == 'train', self.params['target']
-      ]
-    )    
+    catFeatureCols = trainX.select_dtypes(include=['object']).columns
+    
     numPipe = Pipeline([
       ('imputer', SimpleImputer(strategy='median', add_indicator=True)),
       ('scaler', StandardScaler())
@@ -67,12 +64,14 @@ class DataProcessor:
       ('imputer', SimpleImputer(strategy='constant', fill_value='__UNK__')),
       ('cat_encoder', OneHotEncoder(handle_unknown='ignore'))
     ])
-    scikitPipeline = ColumnTransformer([
+    pipe = ColumnTransformer([
       ('num_pipe', numPipe, numFeatureCols),
       ('cat_pipe', catPipe, catFeatureCols)
     ])
-    scikitPipeline.fit(trainX)
-    breakpoint()
+    pipe.fit(trainX)
+    
+    self.trainFeatures = trainX.columns.to_list()
+    self.scikitPipeline = pipe
   
   def getTrainTestDFs(self) -> T.Tuple[pd.DataFrame]:
     trainDF = (
@@ -126,15 +125,26 @@ class DataProcessor:
         logger.info(f'Failed to convert col \'{c}\' from object to string')
   
   def _sanitizeStrCols(self) -> None:
-    strCols = self.df.select_dtypes(include=['string']).columns
+    strCols = self.df.select_dtypes(include=['object']).columns
     
     for c in strCols:
-      self.df[c] = (
-        self.df[c].apply(
-          lambda x: self._sanitizeString(x) if isinstance(x, str) else x
-        )
-        .astype(pd.StringDtype())
+      self.df[c] = self.df[c].apply(
+        lambda x: self._sanitizeString(x) if isinstance(x, str) else x
       )
+      
+  def _ynToBoolCols(self) -> None:
+    # sklearn fails with bool cols
+    ynCols = ['abortion_edit_indicator', 'emergency_department_indicator']
+    
+    for c in ynCols:
+      try:
+        logger.info(f'Col \'{c}\' converted from object to bool')
+        self.df[c] = (
+          self.df[c].map({'Y': True, 'N': False}).astype(pd.BooleanDtype())
+        )
+      except TypeError as e:
+        logger.info(f'Failed to convert col \'{c}\' from object to bool')
+
       
   def _mergeCodeAndDescCols(self) -> None:
     colStems = ['ccs_diagnosis', 'ccs_procedure']
