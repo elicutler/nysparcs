@@ -7,7 +7,7 @@ from overrides import EnforceOverrides, overrides, final
 from torch.utils.data import DataLoader
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
-from torch_dataset import TorchDataset
+from torch_dataset import DataLoaderFactory
 from utils import getNumCores
 
 logger = logging.getLogger(__name__)
@@ -49,23 +49,25 @@ class TorchTrainer(Trainer):
     
     trainDF, testDF = self.dataProcessor.getTrainTestDFs()
     
-    trainDataset = TorchDataset(trainDF, self.params['target'])
-    trainLoader = DataLoader(
-      trainDataset, batch_size=self.params['batch_size'],
-      num_workers=(
-        getNumCores()-1 if self.params['num_workers'] == -1
-        else self.params['num_workers']
-      )
-    )
+    trainDataLoader = DataLoaderFactory.make('train', trainDF, params)
+    testDataLoader = DataLoaderFactory.make('test', testDF, params)
+#     trainDataset = TorchDataset(trainDF, params)
+#     trainLoader = DataLoader(
+#       trainDataset, batch_size=self.params['batch_size'],
+#       num_workers=(
+#         getNumCores()-1 if self.params['num_workers'] == -1
+#         else self.params['num_workers']
+#       )
+#     )
     
-    testDataset = TorchDatset(testDF, self.params['target'])
-    testLoader = DataLoader(
-      testDataset, batch_size=len(testDataset),
-      num_workers=(
-        getNumCores()-1 if self.params['num_workers'] == -1
-        else self.params['num_workers']
-      )
-    )
+#     testDataset = TorchDatset(testDF, self.params['target'])
+#     testLoader = DataLoader(
+#       testDataset, batch_size=len(testDataset),
+#       num_workers=(
+#         getNumCores()-1 if self.params['num_workers'] == -1
+#         else self.params['num_workers']
+#       )
+#     )
     
     model = self._loadModel()
     initWeights = self._initializeWeights()
