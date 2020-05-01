@@ -44,11 +44,13 @@ class TorchTrainer(Trainer):
     
     rawDF = self.dataReader.read()
     self.dataProcessor.loadDF(rawDF)
-    self.dataProcessor.process()
-    self.dataProcessor.fitScikitPipeline()
+    self.dataProcessor.processDF()
+    self.dataProcessor.fitSKLearnProcessor()
     
-    trainDF, testDF = self.dataProcessor.getTrainTestDFs()
+    trainDF = self.dataProcessor.getTrainOrTestDF('train')
+    testDF = self.dataProcessor.getTrainOrTestDF('test')
     
+    # TODO: pass scikit pipeline, column order to data loaders
     trainDataLoader = DataLoaderFactory.make('train', trainDF, params)
     testDataLoader = DataLoaderFactory.make('test', testDF, params)
 #     trainDataset = TorchDataset(trainDF, params)

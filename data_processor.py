@@ -25,15 +25,24 @@ class DataProcessor:
   
   def __init__(self, params) -> None:
     self.params = params.copy()
+    
     self.df = None
+    self.dfIsProcessed = False
+    
     self.trainFeatures = None
     self.scikitPipeline = None
     
   def loadDF(self, inDF) -> None:
     self.df = inDF.copy()
+    self.dfIsProcessed = False
     
-  def process(self) -> None:
-    logger.info('Processing data...')
+  def processDF(self) -> None:
+    logger.info('Processing data')
+    
+    if self.dfIsProcessed:
+      logger.warning('DF has already been processed. Nothing to do.')
+      return
+    
     assert self.df is not None, 'First call self.loadDF()'
     
     self.df.columns = self._sanitizeColNames(self.df.columns)
@@ -47,9 +56,13 @@ class DataProcessor:
     self._filterNumericOutliers()
     self.df.reset_index(drop=True, inplace=True)
     
-  def fitScikitPipeline(self) -> None:
+    self.dfIsProcessed = True
     
-    trainDF, _ = self.getTrainTestDFs()
+  def fitSKLearnProcessor(self) -> None:
+    logger.info('Fitting sk-learn processing pipeline')
+    assert self.dfIsProcessed, 'First call self.processDF()'
+    
+    trainDF = self.getTrainOrTestDF('train')
     trainX = trainDF.drop(columns=[self.params['target']])
     trainY = trainDF[self.params['target']]
     
@@ -72,19 +85,16 @@ class DataProcessor:
     
     self.trainFeatures = trainX.columns.to_list()
     self.scikitPipeline = pipe
-  
-  def getTrainTestDFs(self) -> T.Tuple[pd.DataFrame]:
-    trainDF = (
-      self.df[self.df['train_test'] == 'train']
+    
+  def getTrainOrTestDF(dfType) -> pd.DataFrame:
+    assert dfType in ['train', 'test']
+    
+    df = (
+      self.df[self.df['train_test'] == dfType]
       .drop(columns=['train_test'])
       .reset_index(drop=True)
     )
-    testDF = (
-      self.df[self.df['train_test'] == 'test']
-      .drop(columns=['train_test'])
-      .reset_index(drop=True)
-    )
-    return trainDF, testDF
+    return df
   
   def _sanitizeColNames(self,colNames) -> T.List[str]:
     return [self._sanitizeString(c) for c in colNames]
