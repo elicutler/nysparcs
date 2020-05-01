@@ -12,11 +12,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-# from sklearn.linear_model import ElasticNet, SGDClassifier
-# from sklearn.ensemble import (
-#     RandomForestRegressor, GradientBoostingRegressor,
-#     RandomForestClassifier, GradientBoostingClassifier
-# )
+from target_encoder import TargetEncoder
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +26,13 @@ class DataProcessor:
     self.dfIsProcessed = False
     
     self.trainFeatures = None
-    self.scikitPipeline = None
+    self.skLearnProcessor = None
     
   def loadDF(self, inDF) -> None:
     self.df = inDF.copy()
-    self.dfIsProcessed = False
+    
+    if self.dfIsProcessed is True:
+      self.dfIsProcessed = False
     
   def processDF(self) -> None:
     logger.info('Processing data')
@@ -59,7 +57,7 @@ class DataProcessor:
     self.dfIsProcessed = True
     
   def fitSKLearnProcessor(self) -> None:
-    logger.info('Fitting sk-learn processing pipeline')
+    logger.info('Fitting scikit-learn processing pipeline')
     assert self.dfIsProcessed, 'First call self.processDF()'
     
     trainDF = self.getTrainOrTestDF('train')
@@ -69,13 +67,15 @@ class DataProcessor:
     numFeatureCols = trainX.select_dtypes(include=['number']).columns
     catFeatureCols = trainX.select_dtypes(include=['object']).columns
     
+    catEncoder = self._getCatEncoder()
+    
     numPipe = Pipeline([
       ('imputer', SimpleImputer(strategy='median', add_indicator=True)),
       ('scaler', StandardScaler())
     ])
     catPipe = Pipeline([
       ('imputer', SimpleImputer(strategy='constant', fill_value='__UNK__')),
-      ('cat_encoder', OneHotEncoder(handle_unknown='ignore'))
+      ('cat_encoder', catEncoder)
     ])
     pipe = ColumnTransformer([
       ('num_pipe', numPipe, numFeatureCols),
@@ -84,9 +84,9 @@ class DataProcessor:
     pipe.fit(trainX)
     
     self.trainFeatures = trainX.columns.to_list()
-    self.scikitPipeline = pipe
+    self.skLearnProcessor = pipe
     
-  def getTrainOrTestDF(dfType) -> pd.DataFrame:
+  def getTrainOrTestDF(self, dfType) -> pd.DataFrame:
     assert dfType in ['train', 'test']
     
     df = (
@@ -95,6 +95,13 @@ class DataProcessor:
       .reset_index(drop=True)
     )
     return df
+  
+  def getSKLearnProcessor(self):
+    assert (
+      self.sklearnProcessor is not None,
+      'first call self.fitSKLearnProcessor()'
+    )
+    return self.sklearnProcessor
   
   def _sanitizeColNames(self,colNames) -> T.List[str]:
     return [self._sanitizeString(c) for c in colNames]
@@ -215,6 +222,14 @@ class DataProcessor:
         f'Removed {rmNumRows}/{initNumRows} rows with \'{c}\''
         f' beyond {quantile=} value.'
       )
-  
+      
+  def _getCatEncoder(self) -> T.Union[OneHotEncoder, TargetEncoder]:
+    
+    if self.params['cat_encoder'] == 'one_hot':
+      return OneHotEncoder(handle_unknown='ignore')
+    
+    elif self.params['cat_encoder'] == 'target':
+      return TargetEncoder(priorFrac=self.params['target_encoder_prior'])
 
+    raise ValueError(f'{cat_encoder=} not recognized')
     

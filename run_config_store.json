@@ -15,6 +15,7 @@
       "emergency_department_indicator",
       "total_charges"
     ],
+    "cat_encoder_strat": "one_hot",
     "torch_model": "torchy",
     "local_data_path": "data/Hospital_Inpatient_Discharges__SPARCS_De-Identified___2009.csv",
     "batch_size": 100,
@@ -36,6 +37,7 @@
       "emergency_department_indicator",
       "total_charges"
     ],
+    "cat_encoder_strat": "one_hot",
     "torch_model": "torchy",
     "socrata_data_key": "q6hk-esrj",
     "batch_size": 100,

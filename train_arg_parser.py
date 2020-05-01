@@ -22,6 +22,19 @@ class TrainArgParser:
         ' (Default: None)'
       )
     )
+    self.parser.add_argument(
+      '--cat_encoder_strat', type=str, default='one_hot', help=(
+        'Encoding for categorical features.'
+        ' Options: \'one_hot\', \'target\' (Default: \'one_hot\')'
+      )
+    )
+    self.parser.add_argument(
+      '--target_encoder_prior', type=float, default=0., help=(
+        'Regularization parameter for categorical feature target'
+        ' encoding to pull level means toward grand mean. Only set'
+        ' this if cat_encoder_strat=\'target\' (Default: 0.)'
+      )
+    )
     self.parser.add_argument('--torch_model', type=str)
     self.parser.add_argument('--sklearn_model', type=str)
     self.parser.add_argument('--local_data_path', type=str)
@@ -100,6 +113,9 @@ class TrainArgParser:
   def _validateArgs(self, args) -> None:
         
     assert args.target in ['prior_auth_dispo', 'length_of_stay']
+    # categorical feature encoding
+    assert args.cat_encoder in ['one_hot', 'target']
+    assert not (args.cat_encoder == 'one_hot' and args.target_encoder_prior > 0.)
     # pytorch model XOR sklearn model
     assert bool(args.torch_model) + bool(args.sklearn_model) == 1
     # local data path XOR internet data key

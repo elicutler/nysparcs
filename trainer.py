@@ -7,7 +7,7 @@ from overrides import EnforceOverrides, overrides, final
 from torch.utils.data import DataLoader
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
-from torch_dataset import DataLoaderFactory
+from data_loader import DataLoaderFactory
 from utils import getNumCores
 
 logger = logging.getLogger(__name__)
@@ -45,14 +45,21 @@ class TorchTrainer(Trainer):
     rawDF = self.dataReader.read()
     self.dataProcessor.loadDF(rawDF)
     self.dataProcessor.processDF()
-    self.dataProcessor.fitSKLearnProcessor()
     
     trainDF = self.dataProcessor.getTrainOrTestDF('train')
     testDF = self.dataProcessor.getTrainOrTestDF('test')
     
-    # TODO: pass scikit pipeline, column order to data loaders
-    trainDataLoader = DataLoaderFactory.make('train', trainDF, params)
-    testDataLoader = DataLoaderFactory.make('test', testDF, params)
+    self.dataProcessor.fitSKLearnProcessor()
+    sklearnProcessor = self.dataProcessor.getSKLearnProcessor()
+    
+    # TODO: continue w data_loader.py
+    # make DataLoaderFactory and DataLoaders, and accept all args
+    trainDataLoader = DataLoaderFactory.make(
+      'train', trainDF, sklearnProcessor, params
+    )
+    testDataLoader = DataLoaderFactory.make(
+      'test', testDF, sklearnProcessor, params
+    )
 #     trainDataset = TorchDataset(trainDF, params)
 #     trainLoader = DataLoader(
 #       trainDataset, batch_size=self.params['batch_size'],
