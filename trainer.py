@@ -59,6 +59,7 @@ class TorchTrainer(Trainer):
     self.torchDataset.loadSKLearnProcessor(sklearnProcessor)
     self.torchDataset.validateFeatures()
     
+    self.torchDataset.__getitem__(0)
 
 #     trainLoader = DataLoader(
 #       trainDataset, batch_size=self.params['batch_size'],

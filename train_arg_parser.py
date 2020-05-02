@@ -15,7 +15,7 @@ class TrainArgParser:
   def __init__(self) -> None:
     self.parser = argparse.ArgumentParser()
     
-    self.parser.add_argument('--target', type=str)
+    self.parser.add_argument('--target', type=str, default='prior_auth_dispo')
     self.parser.add_argument(
       '--features', type=str, nargs='+', default=None, help=(
         'If None, use all cleaned column names in dataset except for target.'
@@ -97,7 +97,8 @@ class TrainArgParser:
   
   def _argsDictToList(self, runConfigs, runID) -> T.List[str]:
     '''
-    Convert {'key': <values any type>, ...} to ['--key', <'v1'>, ... <'vn'>, ...]
+    Convert {'key': <values any type> <, ...>} 
+    to ['--key' <, 'v1'> <, ..., 'vn'> <, ...>]
     '''
     argsDict = {**runConfigs[runID], **{'run_id': runID}}
     listOfTuples = [
@@ -118,9 +119,9 @@ class TrainArgParser:
     assert not (
       args.cat_encoder_strat == 'one_hot' and args.target_encoder_prior > 0.
     )
-    # pytorch model XOR sklearn model
+    # pytorch model xor sklearn model
     assert bool(args.torch_model) + bool(args.sklearn_model) == 1
-    # local data path XOR internet data key
+    # local data path xor internet data key
     assert bool(args.local_data_path) + bool(args.socrata_data_key) == 1
     # non-overlapping train/test intervals with start <= end  
     assert args.train_range[0] <= args.train_range[1]
