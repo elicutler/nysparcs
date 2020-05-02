@@ -48,10 +48,17 @@ class DataProcessor:
     
     self.dfIsProcessed = True
     
-  def getTrainTestDFs(self) -> T.Tuple[pd.DataFrame]:
+  def getTrainValTestDFs(self) -> T.Tuple[pd.DataFrame]:
     
+    numTrainValRows = (self.df['train_test'] == 'train').sum()
+    lastTrainInd = int(numTrainValRows * (1-self.params['val_frac']))
     trainDF = (
-      self.df[self.df['train_test'] == 'train']
+      self.df.iloc[:lastTrainInd]
+      .drop(columns=['train_test'])
+      .reset_index(drop=True)
+    )
+    valDF = (
+      self.df.iloc[lastTrainInd:numTrainValRows]
       .drop(columns=['train_test'])
       .reset_index(drop=True)
     )
@@ -60,7 +67,7 @@ class DataProcessor:
       .drop(columns=['train_test'])
       .reset_index(drop=True)
     )
-    return trainDF, testDF
+    return trainDF, valDF, testDF
   
   def _sanitizeColNames(self,colNames) -> T.List[str]:
     return [self._sanitizeString(c) for c in colNames]

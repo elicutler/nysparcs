@@ -4,11 +4,11 @@ import logging
 import re
 import torch.nn as nn
 import torch.nn.functional as F
+import utils
 
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
-from utils import getMinMaxIndicesOfItemInList
-
+from torch import Tensor
 
 logger = logging.getLogger(__name__)
     
@@ -18,17 +18,26 @@ class CatEmbedNet(nn.Module):
   def __init__(self, featureNames) -> None:
     super().__init__()
     self.featureNames = featureNames
-    self.catEmbeddingLayers = self._makeCatEmbeddingLayers()
+    self.catFeatureIndexRangeMap = self._makeCatFeatureIndexRangeMap()
+    self.numFeatureIndexRange = (0, self._getMinCatFeatureIndex()) 
+#     self.catEmbeddingLayers = self._makeCatEmbeddingLayers()
     
-  def _makeCatEmbeddingLayers(self) -> T.Dict:
+  def _makeCatFeatureIndexRangeMap(self) -> T.Dict[str, T.Tuple[int]]:
     catFeatures = sorted({
       c.group() for f in self.featureNames 
       if (c := re.search('^x\d+_', f))
     })
     catFeatureIndexRangeMap = {
-      c: getMinMaxIndicesOfItemInList(c, self.featureNames, startsWith=True)
+      c: utils.getMinMaxIndicesOfItemInList(c, self.featureNames, startsWith=True)
       for c in catFeatures
     }
+    return catFeatureIndexRangeMap
+    
+  def _getMinCatFeatureIndex(self) -> int:
+    allIndices = utils.flattenNestedSeq(self.catFeatureIndexRange.values())
+    return min(allIndices)
+  
+  def forward(x) -> Tensor:
     breakpoint()
     
 

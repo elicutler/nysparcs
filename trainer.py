@@ -1,11 +1,14 @@
 
 import typing as T
 import logging
+import torch.nn as nn
+import torch.optim as optim
 import torch_models
 
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from torch.utils.data import DataLoader
+from torch import Tensor
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
@@ -41,7 +44,6 @@ class TorchTrainer(Trainer):
     self.dataReader = DataReaderFactory.make(params)
     self.dataProcessor = DataProcessor(params)
     self.sklearnProcessor = SKLearnProcessor(params)
-    self.torchDataset = TorchDataset(params)
   
   @overrides
   def train(self):
@@ -50,40 +52,69 @@ class TorchTrainer(Trainer):
     
     self.dataProcessor.loadDF(rawDF)
     self.dataProcessor.processDF()
-    trainDF, testDF = self.dataProcessor.getTrainTestDFs()
+    trainDF, valDF, testDF = self.dataProcessor.getTrainValTestDFs()
     
     self.sklearnProcessor.loadDF(trainDF)
     self.sklearnProcessor.fit()
     sklearnProcessor = self.sklearnProcessor.get()
     
-    self.torchDataset.loadDF(trainDF)
-    self.torchDataset.loadSKLearnProcessor(sklearnProcessor)
-    self.torchDataset.validateFeatures()
+    torchTrainDF = TorchDataset(params, trainDF, sklearnProcessor)
+    torchValDF = TorchDataset(params, valDF, sklearnProcessor)
+    torchTestDF = TorchDataset(params, testDF, sklearnProcessor)
+    
     
     batchSize = self.params['batch_size']
     numWorkers = (
       getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
     )
     trainLoader = DataLoader(
-      trainDF, batch_size=batchSize, num_workers=numWorkers
+      torchTrainDF, batch_size=batchSize, num_workers=numWorkers
+    )
+    valLoader = DataLoader(
+      torchValDF, batch_size=batchSize, num_workers=numWorkers
     )
     testLoader = DataLoader(
-      testDF, batch_size=batchSize, num_workers=numWorkers
+      torchTestDF, batch_size=batchSize, num_workers=numWorkers
     )
 
     model = self._loadModel(sklearnProcessor.featureNames)
-    initWeights = self._initializeWeights()
+#     initWeights = self._initializeWeights()
+    lossCriterion = (
+      nn.BCEWithLogitsLoss() if self.params['target'] == 'prior_auth_dispo'
+      else nn.L1Loss()
+    )
+    optimizer = optim.Adam(model.parameters())
     
-    for e in range(epochs):
-      pass
-#       rawData = self.dataLoader.load()
-#       inputData = self.dataProcessor.process()
-#       updatedWeights = self._optimize()
-  
-  def _loadModel(self, featureNames):
+    allEpochLosses = []
+    
+    for i in range(1, (numEpochs := self.params['n_epochs'])+1):
+      logger.info(f'Training epoch {i}/{numEpochs}')
+      
+      running_epoch_loss = 0.    
+      running_epoch_nobs = 0
+      
+      for X, y in trainLoader:
+        
+        optimizer.zero_grad()
+        preds = model(X)
+        loss = lossCriterion(preds, y, reduction='sum')
+        loss.backward()
+        optimizer.step()
+        
+        running_epoch_loss += loss.item()
+        running_epoch_nobs += y.shape[0]
+        
+      allEpochLosses.append(running_epoch_loss / running_epoch_nobs)
+
+  def _loadModel(self, featureNames) -> T.Type[nn.Module]:
+    
     if (modelName := self.params['torch_model']) == 'CatEmbedNet':
-      return torch_models.CatEmbedNet(featureNames)
-    
+      modelClass = torch_models.CatEmbedNet
+      
+    else:
+      raise ValueError(f'{modelClass=} not recognized')
+      
+    return modelClass(featureNames)
   
   def _initializeWeights(self):
     pass

@@ -32,7 +32,7 @@ class TrainArgParser:
       '--target_encoder_prior', type=float, default=0., help=(
         'Regularization parameter for categorical feature target'
         ' encoding to pull level means toward grand mean. Only set'
-        ' this if cat_encoder_strat=\'target\' (Default: 0.)'
+        ' this if cat_encoder_strat=\'target\'. (Default: 0.)'
       )
     )
     self.parser.add_argument('--torch_model', type=str)
@@ -52,6 +52,14 @@ class TrainArgParser:
     self.parser.add_argument(
       '--test_range', type=int, nargs=2, default=[1000, 1999],
       help='Index range of test records'
+    )
+    self.parser.add_argument(
+      '--val_frac', type=float, default=0.2, help=(
+        'Fraction of training set to use for validation. If using a'
+        ' pytorch model, this will be a hold-out validation set. If'
+        ' using a scikit-learn model, k-fold cross-validation will'
+        ' be employed. (Default: 0.2)'
+      )
     )
     self.parser.add_argument('--epochs', type=int, default=1)
     self.parser.add_argument(
@@ -119,6 +127,7 @@ class TrainArgParser:
     assert not (
       args.cat_encoder_strat == 'one_hot' and args.target_encoder_prior > 0.
     )
+    assert args.target_encoder_prior >= 0.
     # pytorch model xor sklearn model
     assert bool(args.torch_model) + bool(args.sklearn_model) == 1
     # local data path xor internet data key
@@ -130,3 +139,5 @@ class TrainArgParser:
       (args.train_range[1] <= args.test_range[0])
       or (args.test_range[1] <= args.train_range[0])
     )
+    # validation fraction
+    assert 0. <= args.val_frac < 1.

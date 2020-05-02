@@ -13,20 +13,12 @@ logger = logging.getLogger(__name__)
 
 class TorchDataset(Dataset):
   
-  def __init__(self, params) -> None:
+  def __init__(self, params, inDF, sklearnProcessor) -> None:
     self.params = params.copy()
-    
-  def loadDF(self, inDF) -> None:
     self.df = inDF.copy()
-    
-  def loadSKLearnProcessor(self, sklearnProcessor) -> None:
     self.sklearnProcessor = sklearnProcessor
     
-  def validateFeatures(self) -> None:
-    assert (
-      (self.df.drop(columns=self.params['target']).columns 
-      == self.sklearnProcessor.featureInputNames)
-    ).all()
+    self._validateFeatures()
     
   def __len__(self) -> int:
     return self.df.shape[0]
@@ -44,4 +36,10 @@ class TorchDataset(Dataset):
     y = self.df[self.params['target']].iloc[idx]
     
     return X, y
+    
+  def _validateFeatures(self) -> None:
+    assert (
+      (self.df.drop(columns=self.params['target']).columns 
+      == self.sklearnProcessor.featureInputNames)
+    ).all()
     
