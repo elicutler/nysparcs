@@ -26,4 +26,4 @@ if __name__ == '__main__':
   if params.deploy:
     trainer.deployModel()
 
-  logger.info('Analysis complete')
+  logger.info('Analysis complete.')

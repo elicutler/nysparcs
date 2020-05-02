@@ -21,6 +21,9 @@ class CatEmbedNet(nn.Module):
     self.catFeatureIndexRangeMap = self._makeCatFeatureIndexRangeMap()
     self.numFeatureIndexRange = (0, self._getMinCatFeatureIndex()) 
 #     self.catEmbeddingLayers = self._makeCatEmbeddingLayers()
+  
+  def forward(self, x) -> Tensor:
+    pass
     
   def _makeCatFeatureIndexRangeMap(self) -> T.Dict[str, T.Tuple[int]]:
     catFeatures = sorted({
@@ -34,12 +37,9 @@ class CatEmbedNet(nn.Module):
     return catFeatureIndexRangeMap
     
   def _getMinCatFeatureIndex(self) -> int:
-    allIndices = utils.flattenNestedSeq(self.catFeatureIndexRange.values())
+    allIndices = utils.flattenNestedSeq(self.catFeatureIndexRangeMap.values())
     return min(allIndices)
-  
-  def forward(x) -> Tensor:
-    breakpoint()
-    
+
 
     
     

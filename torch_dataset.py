@@ -2,7 +2,7 @@
 import typing as T
 import logging
 import pandas as pd
-import numpy as np
+import torch
 
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
@@ -23,7 +23,8 @@ class TorchDataset(Dataset):
   def __len__(self) -> int:
     return self.df.shape[0]
   
-  def __getitem__(self, idx) -> T.Tuple[np.matrix, np.float64]:
+  def __getitem__(self, idx) -> T.Tuple[torch.Tensor]:
+    breakpoint()
     
     featureInputs = (
       self.df
@@ -32,9 +33,17 @@ class TorchDataset(Dataset):
       .to_frame()
       .transpose()
     )
-    X = self.sklearnProcessor.transform(featureInputs).todense()
-    y = self.df[self.params['target']].iloc[idx]
+    X =(
+      self.sklearnProcessor.transform(featureInputs).todense()
+    )
+    print(f'DIM X: {X.shape}')
     
+    y = (
+      self.df[self.params['target']].iloc[idx]
+    )
+    
+    print(f'DIM Y: {y.shape}')
+    breakpoint()
     return X, y
     
   def _validateFeatures(self) -> None:

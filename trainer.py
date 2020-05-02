@@ -8,7 +8,6 @@ import torch_models
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from torch.utils.data import DataLoader
-from torch import Tensor
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
@@ -58,9 +57,9 @@ class TorchTrainer(Trainer):
     self.sklearnProcessor.fit()
     sklearnProcessor = self.sklearnProcessor.get()
     
-    torchTrainDF = TorchDataset(params, trainDF, sklearnProcessor)
-    torchValDF = TorchDataset(params, valDF, sklearnProcessor)
-    torchTestDF = TorchDataset(params, testDF, sklearnProcessor)
+    torchTrainDF = TorchDataset(self.params, trainDF, sklearnProcessor)
+    torchValDF = TorchDataset(self.params, valDF, sklearnProcessor)
+    torchTestDF = TorchDataset(self.params, testDF, sklearnProcessor)
     
     
     batchSize = self.params['batch_size']
@@ -83,11 +82,11 @@ class TorchTrainer(Trainer):
       nn.BCEWithLogitsLoss() if self.params['target'] == 'prior_auth_dispo'
       else nn.L1Loss()
     )
-    optimizer = optim.Adam(model.parameters())
+#     optimizer = optim.Adam(model.parameters())
     
     allEpochLosses = []
     
-    for i in range(1, (numEpochs := self.params['n_epochs'])+1):
+    for i in range(1, (numEpochs := self.params['epochs'])+1):
       logger.info(f'Training epoch {i}/{numEpochs}')
       
       running_epoch_loss = 0.    
@@ -95,7 +94,7 @@ class TorchTrainer(Trainer):
       
       for X, y in trainLoader:
         
-        optimizer.zero_grad()
+#         optimizer.zero_grad()
         preds = model(X)
         loss = lossCriterion(preds, y, reduction='sum')
         loss.backward()
@@ -105,6 +104,8 @@ class TorchTrainer(Trainer):
         running_epoch_nobs += y.shape[0]
         
       allEpochLosses.append(running_epoch_loss / running_epoch_nobs)
+      
+    logger.info('Training complete')
 
   def _loadModel(self, featureNames) -> T.Type[nn.Module]:
     
