@@ -1,6 +1,7 @@
 
 import typing as T
 import logging
+import torch_models
 
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
@@ -42,7 +43,6 @@ class TorchTrainer(Trainer):
     self.sklearnProcessor = SKLearnProcessor(params)
     self.torchDataset = TorchDataset(params)
   
-    self.model = None # or use model getter / factory?
   @overrides
   def train(self):
     
@@ -71,7 +71,7 @@ class TorchTrainer(Trainer):
       testDF, batch_size=batchSize, num_workers=numWorkers
     )
 
-    model = self._loadModel()
+    model = self._loadModel(sklearnProcessor.featureNames)
     initWeights = self._initializeWeights()
     
     for e in range(epochs):
@@ -80,9 +80,10 @@ class TorchTrainer(Trainer):
 #       inputData = self.dataProcessor.process()
 #       updatedWeights = self._optimize()
   
-  def _loadModel(self):
-    modelName = self.params['torch_model']
-    pass
+  def _loadModel(self, featureNames):
+    if (modelName := self.params['torch_model']) == 'CatEmbedNet':
+      return torch_models.CatEmbedNet(featureNames)
+    
   
   def _initializeWeights(self):
     pass

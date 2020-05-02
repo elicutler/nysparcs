@@ -39,8 +39,8 @@ class DataProcessor:
     self._processLOS()
     self._floatToIntCols()
     self._mergeCodeAndDescCols()
-    self._makePriorAuthDispo()
     self._sanitizeStrCols()
+    self._makePriorAuthDispo()
     self._removeUnusedCols()
     self._nullifyInvalidNumericCols()
     self._filterNumericOutliers()
@@ -137,11 +137,12 @@ class DataProcessor:
   
   def _makePriorAuthDispo(self) -> None:
     priorAuthDispos = [ 
-      'home_w__home_health_services',
+      'home_w_home_health_services',
       'inpatient_rehabilitation_facility',
       'psychiatric_hospital_or_unit_of_hosp',
       'skilled_nursing_home'
     ]
+    
     self.df['prior_auth_dispo'] = (
       self.df['patient_disposition'].apply(
         lambda x: np.nan if pd.isna(x) 
