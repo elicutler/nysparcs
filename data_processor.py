@@ -8,11 +8,6 @@ import numpy as np
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from pandas.api.types import is_numeric_dtype
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
-from target_encoder import TargetEncoder
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +20,13 @@ class DataProcessor:
     self.df = None
     self.dfIsProcessed = False
     
-    self.trainFeatures = None
-    self.skLearnProcessor = None
-    
   def loadDF(self, inDF) -> None:
     self.df = inDF.copy()
     
     if self.dfIsProcessed is True:
       self.dfIsProcessed = False
     
-  def processDF(self) -> None:
+  def processDF(self) -> pd.DataFrame:
     logger.info('Processing data')
     
     if self.dfIsProcessed:
@@ -56,52 +48,19 @@ class DataProcessor:
     
     self.dfIsProcessed = True
     
-  def fitSKLearnProcessor(self) -> None:
-    logger.info('Fitting scikit-learn processing pipeline')
-    assert self.dfIsProcessed, 'First call self.processDF()'
+  def getTrainTestDFs(self) -> T.Tuple[pd.DataFrame]:
     
-    trainDF = self.getTrainOrTestDF('train')
-    trainX = trainDF.drop(columns=[self.params['target']])
-    trainY = trainDF[self.params['target']]
-    
-    numFeatureCols = trainX.select_dtypes(include=['number']).columns
-    catFeatureCols = trainX.select_dtypes(include=['object']).columns
-    
-    catEncoder = self._getCatEncoder()
-    
-    numPipe = Pipeline([
-      ('imputer', SimpleImputer(strategy='median', add_indicator=True)),
-      ('scaler', StandardScaler())
-    ])
-    catPipe = Pipeline([
-      ('imputer', SimpleImputer(strategy='constant', fill_value='__UNK__')),
-      ('cat_encoder', catEncoder)
-    ])
-    pipe = ColumnTransformer([
-      ('num_pipe', numPipe, numFeatureCols),
-      ('cat_pipe', catPipe, catFeatureCols)
-    ])
-    pipe.fit(trainX)
-    
-    self.trainFeatures = trainX.columns.to_list()
-    self.skLearnProcessor = pipe
-    
-  def getTrainOrTestDF(self, dfType) -> pd.DataFrame:
-    assert dfType in ['train', 'test']
-    
-    df = (
-      self.df[self.df['train_test'] == dfType]
+    trainDF = (
+      self.df[self.df['train_test'] == 'train']
       .drop(columns=['train_test'])
       .reset_index(drop=True)
     )
-    return df
-  
-  def getSKLearnProcessor(self):
-    assert (
-      self.sklearnProcessor is not None,
-      'first call self.fitSKLearnProcessor()'
+    testDF = (
+      self.df[self.df['train_test'] == 'test']
+      .drop(columns=['train_test'])
+      .reset_index(drop=True)
     )
-    return self.sklearnProcessor
+    return trainDF, testDF
   
   def _sanitizeColNames(self,colNames) -> T.List[str]:
     return [self._sanitizeString(c) for c in colNames]
@@ -223,13 +182,3 @@ class DataProcessor:
         f' beyond {quantile=} value.'
       )
       
-  def _getCatEncoder(self) -> T.Union[OneHotEncoder, TargetEncoder]:
-    
-    if self.params['cat_encoder'] == 'one_hot':
-      return OneHotEncoder(handle_unknown='ignore')
-    
-    elif self.params['cat_encoder'] == 'target':
-      return TargetEncoder(priorFrac=self.params['target_encoder_prior'])
-
-    raise ValueError(f'{cat_encoder=} not recognized')
-    

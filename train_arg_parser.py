@@ -89,13 +89,13 @@ class TrainArgParser:
     with open('run_config_store.json') as file:
       runConfigs = json.load(file)
       
-    argsList = self._makeArgsListForParser(runConfigs, runID)
+    argsList = self._argsDictToList(runConfigs, runID)
     args = self.parser.parse_args(argsList)
     
     self._validateArgs(args)
     return args
   
-  def _makeArgsListForParser(self, runConfigs, runID) -> T.List[str]:
+  def _argsDictToList(self, runConfigs, runID) -> T.List[str]:
     '''
     Convert {'key': <values any type>, ...} to ['--key', <'v1'>, ... <'vn'>, ...]
     '''
@@ -114,8 +114,10 @@ class TrainArgParser:
         
     assert args.target in ['prior_auth_dispo', 'length_of_stay']
     # categorical feature encoding
-    assert args.cat_encoder in ['one_hot', 'target']
-    assert not (args.cat_encoder == 'one_hot' and args.target_encoder_prior > 0.)
+    assert args.cat_encoder_strat in ['one_hot', 'target']
+    assert not (
+      args.cat_encoder_strat == 'one_hot' and args.target_encoder_prior > 0.
+    )
     # pytorch model XOR sklearn model
     assert bool(args.torch_model) + bool(args.sklearn_model) == 1
     # local data path XOR internet data key
