@@ -25,7 +25,7 @@ class TorchDataset(Dataset):
   def validateFeatures(self) -> None:
     assert (
       (self.df.drop(columns=self.params['target']).columns 
-      == self.sklearnProcessor.features)
+      == self.sklearnProcessor.featureInputNames)
     ).all()
     
   def __len__(self) -> int:

@@ -42,6 +42,7 @@ class TorchTrainer(Trainer):
     self.sklearnProcessor = SKLearnProcessor(params)
     self.torchDataset = TorchDataset(params)
   
+    self.model = None # or use model getter / factory?
   @overrides
   def train(self):
     
@@ -59,25 +60,17 @@ class TorchTrainer(Trainer):
     self.torchDataset.loadSKLearnProcessor(sklearnProcessor)
     self.torchDataset.validateFeatures()
     
-    self.torchDataset.__getitem__(0)
+    batchSize = self.params['batch_size']
+    numWorkers = (
+      getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
+    )
+    trainLoader = DataLoader(
+      trainDF, batch_size=batchSize, num_workers=numWorkers
+    )
+    testLoader = DataLoader(
+      testDF, batch_size=batchSize, num_workers=numWorkers
+    )
 
-#     trainLoader = DataLoader(
-#       trainDataset, batch_size=self.params['batch_size'],
-#       num_workers=(
-#         getNumCores()-1 if self.params['num_workers'] == -1
-#         else self.params['num_workers']
-#       )
-#     )
-    
-
-#     testLoader = DataLoader(
-#       testDataset, batch_size=len(testDataset),
-#       num_workers=(
-#         getNumCores()-1 if self.params['num_workers'] == -1
-#         else self.params['num_workers']
-#       )
-#     )
-    
     model = self._loadModel()
     initWeights = self._initializeWeights()
     
@@ -88,6 +81,7 @@ class TorchTrainer(Trainer):
 #       updatedWeights = self._optimize()
   
   def _loadModel(self):
+    modelName = self.params['torch_model']
     pass
   
   def _initializeWeights(self):
