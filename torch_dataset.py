@@ -2,6 +2,7 @@
 import typing as T
 import logging
 import pandas as pd
+import numpy as np
 import torch
 
 from abc import abstractmethod
@@ -24,8 +25,6 @@ class TorchDataset(Dataset):
     return self.df.shape[0]
   
   def __getitem__(self, idx) -> T.Tuple[torch.Tensor]:
-    breakpoint()
-    
     featureInputs = (
       self.df
       .drop(columns=self.params['target'])
@@ -33,17 +32,16 @@ class TorchDataset(Dataset):
       .to_frame()
       .transpose()
     )
-    X =(
-      self.sklearnProcessor.transform(featureInputs).todense()
+    X = torch.from_numpy(
+      np.array(
+        self.sklearnProcessor.transform(featureInputs).todense()
+      ).squeeze()
+    )    
+    y = torch.from_numpy(
+      np.array([
+        self.df[self.params['target']].iloc[idx]
+      ])
     )
-    print(f'DIM X: {X.shape}')
-    
-    y = (
-      self.df[self.params['target']].iloc[idx]
-    )
-    
-    print(f'DIM Y: {y.shape}')
-    breakpoint()
     return X, y
     
   def _validateFeatures(self) -> None:

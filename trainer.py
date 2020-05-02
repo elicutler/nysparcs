@@ -63,17 +63,18 @@ class TorchTrainer(Trainer):
     
     
     batchSize = self.params['batch_size']
-    numWorkers = (
-      getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
-    )
+#     numWorkers = (
+#       getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
+#     )
+    numWorkers = 0 # error with num_workers = getNumCores()-1
     trainLoader = DataLoader(
-      torchTrainDF, batch_size=batchSize, num_workers=numWorkers
+      torchTrainDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
     )
     valLoader = DataLoader(
-      torchValDF, batch_size=batchSize, num_workers=numWorkers
+      torchValDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
     )
     testLoader = DataLoader(
-      torchTestDF, batch_size=batchSize, num_workers=numWorkers
+      torchTestDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
     )
 
     model = self._loadModel(sklearnProcessor.featureNames)
