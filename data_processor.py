@@ -144,10 +144,10 @@ class DataProcessor:
     ]
     self.df['prior_auth_dispo'] = (
       self.df['patient_disposition'].apply(
-        lambda x: pd.NA if pd.isna(x) 
-        else 'Y' if x in priorAuthDispos 
-        else 'N'
-      ).astype(pd.StringDtype())
+        lambda x: np.nan if pd.isna(x) 
+        else 1. if x in priorAuthDispos 
+        else 0.
+      )
     )
   
   def _removeUnusedCols(self) -> None:

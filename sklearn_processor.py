@@ -23,7 +23,6 @@ class SKLearnProcessor:
     self.params = params.copy()
     
     self.trainDF = None
-    self.trainFeatures = None
     self.sklearnProcessor = None
 
   def loadDF(self, inDF) -> None:
@@ -63,7 +62,7 @@ class SKLearnProcessor:
     ])
     pipe.fit(trainX, trainY)
     
-    self.trainFeatures = trainX.columns.to_list()
+    pipe.features = trainX.columns.to_list()
     self.sklearnProcessor = pipe
     
   def get(self) -> Pipeline:

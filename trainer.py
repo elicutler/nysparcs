@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
-# from data_loader import DataLoaderFactory
+from torch_dataset import TorchDataset
 from utils import getNumCores
 
 logger = logging.getLogger(__name__)
@@ -40,6 +40,7 @@ class TorchTrainer(Trainer):
     self.dataReader = DataReaderFactory.make(params)
     self.dataProcessor = DataProcessor(params)
     self.sklearnProcessor = SKLearnProcessor(params)
+    self.torchDataset = TorchDataset(params)
   
   @overrides
   def train(self):
@@ -54,15 +55,11 @@ class TorchTrainer(Trainer):
     self.sklearnProcessor.fit()
     sklearnProcessor = self.sklearnProcessor.get()
     
-    # TODO: continue w data_loader.py
-    # make DataLoaderFactory and DataLoaders, and accept all args
-#     trainDataLoader = DataLoaderFactory.make(
-#       'train', trainDF, sklearnProcessor, params
-#     )
-#     testDataLoader = DataLoaderFactory.make(
-#       'test', testDF, sklearnProcessor, params
-#     )
-#     trainDataset = TorchDataset(trainDF, params)
+    self.torchDataset.loadDF(trainDF)
+    self.torchDataset.loadSKLearnProcessor(sklearnProcessor)
+    self.torchDataset.validateFeatures()
+    
+
 #     trainLoader = DataLoader(
 #       trainDataset, batch_size=self.params['batch_size'],
 #       num_workers=(
@@ -71,7 +68,7 @@ class TorchTrainer(Trainer):
 #       )
 #     )
     
-#     testDataset = TorchDatset(testDF, self.params['target'])
+
 #     testLoader = DataLoader(
 #       testDataset, batch_size=len(testDataset),
 #       num_workers=(
