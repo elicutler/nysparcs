@@ -36,12 +36,10 @@ class TorchDataset(Dataset):
       np.array(
         self.sklearnProcessor.transform(featureInputs).todense()
       ).squeeze()
-    )    
+    ).float()    
     y = torch.from_numpy(
-      np.array([
-        self.df[self.params['target']].iloc[idx]
-      ])
-    )
+      np.array([self.df[self.params['target']].iloc[idx]])
+    ).float()
     return X, y
     
   def _validateFeatures(self) -> None:

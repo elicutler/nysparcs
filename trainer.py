@@ -1,6 +1,7 @@
 
 import typing as T
 import logging
+import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch_models
@@ -66,7 +67,7 @@ class TorchTrainer(Trainer):
 #     numWorkers = (
 #       getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
 #     )
-    numWorkers = 0 # error with num_workers = getNumCores()-1
+    numWorkers = 0 # DataLoader error with num_workers = getNumCores()-1
     trainLoader = DataLoader(
       torchTrainDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
     )
@@ -77,11 +78,15 @@ class TorchTrainer(Trainer):
       torchTestDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
     )
 
-    model = self._loadModel(sklearnProcessor.featureNames)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    logger.info(f'Training on {device=}')
+    
+    model = self._loadModel(sklearnProcessor.featureNames).to(device)
 #     initWeights = self._initializeWeights()
     lossCriterion = (
-      nn.BCEWithLogitsLoss() if self.params['target'] == 'prior_auth_dispo'
-      else nn.L1Loss()
+      nn.BCEWithLogitsLoss(reduction='sum') 
+      if self.params['target'] == 'prior_auth_dispo'
+      else nn.L1Loss(reduction='sum')
     )
 #     optimizer = optim.Adam(model.parameters())
     
@@ -94,10 +99,12 @@ class TorchTrainer(Trainer):
       running_epoch_nobs = 0
       
       for X, y in trainLoader:
+        X = X.to(device)
+        y = y.to(device)
         
 #         optimizer.zero_grad()
         preds = model(X)
-        loss = lossCriterion(preds, y, reduction='sum')
+        loss = lossCriterion(preds, y)
         loss.backward()
         optimizer.step()
         
