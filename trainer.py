@@ -13,6 +13,7 @@ from data_reader import DataReaderFactory
 from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
 from torch_dataset import TorchDataset
+from eval_no_grad import EvalNoGrad
 from utils import getNumCores
 
 logger = logging.getLogger(__name__)
@@ -88,30 +89,55 @@ class TorchTrainer(Trainer):
       if self.params['target'] == 'prior_auth_dispo'
       else nn.L1Loss(reduction='sum')
     )
-#     optimizer = optim.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters())
     
-    allEpochLosses = []
+    allEpochTrainLosses = []
+    allEpochValLosses = []
     
     for i in range(1, (numEpochs := self.params['epochs'])+1):
       logger.info(f'Training epoch {i}/{numEpochs}')
       
-      running_epoch_loss = 0.    
-      running_epoch_nobs = 0
+      runningEpochTrainLoss = 0.    
+      runningEpochTrainNobs = 0
       
-      for X, y in trainLoader:
+      for j, (X, y) in enumerate(trainLoader, 1):
+        
+        if j % 100 == 0:
+          logger.info(f'Training batch {j} of epoch {i}')
+          
         X = X.to(device)
         y = y.to(device)
         
-#         optimizer.zero_grad()
+        optimizer.zero_grad()
         preds = model(X)
         loss = lossCriterion(preds, y)
         loss.backward()
         optimizer.step()
         
-        running_epoch_loss += loss.item()
-        running_epoch_nobs += y.shape[0]
+        runningEpochTrainLoss += loss.item()
+        runningEpochTrainNobs += y.shape[0]
         
-      allEpochLosses.append(running_epoch_loss / running_epoch_nobs)
+      avgEpochTrainLoss = runningEpochTrainLoss / runningEpochTrainNobs
+      allEpochTrainLosses.append(avgEpochTrainLoss)
+      logger.info(f'{avgEpochTrainLoss=}')
+      
+      runningEpochValLoss = 0.
+      runningEpochValNobs = 0
+      
+      with EvalNoGrad(model):
+        for X, y in valLoader:
+          X = X.to(device)
+          y = y.to(device)
+          
+          preds = model(X)
+          loss = lossCriterion(preds, y)
+          
+          runningEpochValLoss += loss.item()
+          runningEpochValNobs += y.shape[0]
+          
+      avgEpochValLoss = runningEpochValLoss / runningEpochValNobs
+      allEpochValLosses.append(avgEpochValLoss)
+      logger.info(f'{avgEpochValLoss=}')
       
     logger.info('Training complete')
 

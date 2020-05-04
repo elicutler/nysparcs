@@ -22,18 +22,31 @@ class CatEmbedNet(nn.Module):
     self.numFeatureIndexRange = (0, self._getMinCatFeatureIndex()) 
     
     self.catEmbeddingLayers = self._makeCatEmbeddingLayers()
+    self.catEmbedActivation = nn.SELU()
+    Layer0NodesOut = self._catEmbeddingPlusNumNodes()
+    self.fullyConnectedLayer1 = nn.Linear(Layer0NodesOut, Layer0NodesOut)
+    self.activationLayer1 = nn.SELU()
+    self.dropoutLayer1 = nn.AlphaDropout(p=0.5)
+    self.fullyConnectedLayer2 = nn.Linear(Layer0NodesOut, 1)
+    self.activationLayer2 = None
   
   def forward(self, X) -> torch.Tensor:
     
     numLayer = X[:, self.numFeatureIndexRange[0]:self.numFeatureIndexRange[1]]
     catSubsets = []
     for (_, (idxMin, idxMax)), layer in self.catEmbeddingLayers.items():
-      catSubsets.append(layer(X[:, idxMin:idxMax+1]))
+      XSubsetLayer = layer(X[:, idxMin:idxMax+1])
+      XSubsetLayer = self.catEmbedActivation(XSubsetLayer)
+      catSubsets.append(XSubsetLayer)
       
     catEmbeddingLayersFused = torch.cat(catSubsets, dim=1)
     X = torch.cat([numLayer, catEmbeddingLayersFused], dim=1)
+    X = self.fullyConnectedLayer1(X)
+    X = self.activationLayer1(X)
+    X = self.dropoutLayer1(X)
+    X = self.fullyConnectedLayer2(X)
     
-    breakpoint()
+    return X
     
   def _makeCatFeatureIndexRangeMap(self) -> T.Dict[str, T.Tuple[int]]:
     catFeatures = sorted({
@@ -61,6 +74,13 @@ class CatEmbedNet(nn.Module):
       catEmbeddingLayers[(catFeature, (idxMin, idxMax))] = linearLayer
       
     return catEmbeddingLayers
+  
+  def _catEmbeddingPlusNumNodes(self):
+    numFeatures = self.numFeatureIndexRange[1] - self.numFeatureIndexRange[0]
+    catFeatures = sum(
+      [layer.out_features for layer in self.catEmbeddingLayers.values()]
+    )
+    return numFeatures + catFeatures
 
   
     

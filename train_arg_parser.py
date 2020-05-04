@@ -61,10 +61,13 @@ class TrainArgParser:
         ' be employed. (Default: 0.2)'
       )
     )
-    self.parser.add_argument('--epochs', type=int, default=1)
+    self.parser.add_argument(
+      '--epochs', type=int, default=1,
+      help='Number of epochs to train pytorch model for. (Default: 1)'
+    )
     self.parser.add_argument(
       '--batch_size', type=int, default=1, 
-      help='-1: Do not batch data for training. (Default: 1)'
+      help='Batch size for pytorhc models. (Default: 1)'
     )
     self.parser.add_argument(
       '--num_workers', type=int, default=-1, 
@@ -141,3 +144,5 @@ class TrainArgParser:
     )
     # validation fraction
     assert 0. <= args.val_frac < 1.
+    # only set epochs and/or batch_size for pytorch models
+    assert not (bool(args.sklearn_model) and (args.epochs or args.batch_size))
