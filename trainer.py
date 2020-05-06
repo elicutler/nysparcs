@@ -8,6 +8,7 @@ import torch_models
 
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
+from collections import OrderedDict
 from torch.utils.data import DataLoader
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
@@ -68,7 +69,7 @@ class TorchTrainer(Trainer):
 #     numWorkers = (
 #       getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
 #     )
-    numWorkers = 0 # DataLoader error with num_workers = getNumCores()-1
+    numWorkers = 0 # DataLoader error with multiprocessing
     trainLoader = DataLoader(
       torchTrainDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
     )
@@ -83,13 +84,11 @@ class TorchTrainer(Trainer):
     logger.info(f'Training on {device=}')
     
     model = self._loadModel(sklearnProcessor.featureNames).to(device)
-#     initWeights = self._initializeWeights()
-    lossCriterion = (
-      nn.BCEWithLogitsLoss(reduction='sum') 
-      if self.params['target'] == 'prior_auth_dispo'
-      else nn.L1Loss(reduction='sum')
-    )
-    optimizer = optim.Adam(model.parameters())
+    breakpoint()
+    
+    weights = self._loadWeights() or model.parameters()
+    optimizer = optim.Adam(weights)
+    lossCriterion = self._makeLossCriterion()
     
     allEpochTrainLosses = []
     allEpochValLosses = []
@@ -124,16 +123,17 @@ class TorchTrainer(Trainer):
       runningEpochValLoss = 0.
       runningEpochValNobs = 0
       
-      with EvalNoGrad(model):
-        for X, y in valLoader:
+      for X, y in valLoader:
+        
+        with EvalNoGrad(model):
           X = X.to(device)
           y = y.to(device)
           
           preds = model(X)
           loss = lossCriterion(preds, y)
           
-          runningEpochValLoss += loss.item()
-          runningEpochValNobs += y.shape[0]
+        runningEpochValLoss += loss.item()
+        runningEpochValNobs += y.shape[0]
           
       avgEpochValLoss = runningEpochValLoss / runningEpochValNobs
       allEpochValLosses.append(avgEpochValLoss)
@@ -151,8 +151,23 @@ class TorchTrainer(Trainer):
       
     return modelClass(featureNames)
   
-  def _initializeWeights(self):
-    pass
+  def _loadWeights(self) -> T.Union[None, OrderedDict]:
+    if (weightsPath := self.params['init_weights']) is None:
+      return
+    
+  
+  def _makeLossCriterion(self) -> None:
+    
+    if (target := self.params['target']) == 'prior_auth_dispo':
+      lossType = nn.BCEWithLogits
+      
+    elif target == 'los':
+      lossType = nn.L1Loss
+      
+    else:
+      raise ValueErro(f'{target=} not recognized')
+      
+    return lossType(reduction='sum')
   
   @overrides
   def saveModel(self):

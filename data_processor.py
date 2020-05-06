@@ -35,6 +35,8 @@ class DataProcessor:
     
     assert self.df is not None, 'First call self.loadDF()'
     
+    finalColumns = [self.params['target']] + self.params['features']
+    
     self.df.columns = self._sanitizeColNames(self.df.columns)
     self._processLOS()
     self._floatToIntCols()

@@ -40,9 +40,14 @@ class TrainArgParser:
     self.parser.add_argument('--local_data_path', type=str)
     self.parser.add_argument('--socrata_data_key', type=str)
     self.parser.add_argument(
-      '--train_from_scratch', action='store_true', help=(
-        'Do _not_ attempt to load model parameters from prior run'
-        ' to initialize parameters for current run.'
+      '--load_state_dict', type=str, default=None, help=(
+        'How to initialize pytorch model params and optimizer. '
+        ' If "latest", then use the most recent stored state_dict;'
+        ' otherwise if none are available, train from scratch. '
+        ' Otherwise pass the name of the stored state_dict for the given model'
+        ' type. If the name is not found, an error will be thrown.'
+        'If this arg is not passed, the model will be trained from scratch.'
+        ' (Default: None)'
       )
     )
     self.parser.add_argument(
@@ -145,4 +150,6 @@ class TrainArgParser:
     # validation fraction
     assert 0. <= args.val_frac < 1.
     # only set epochs and/or batch_size for pytorch models
-    assert not (bool(args.sklearn_model) and (args.epochs or args.batch_size))
+    assert not (args.sklearn_model and (args.epochs or args.batch_size))
+    # only pass state_dict for pytorch models
+    assert not (args.sklearn_model and args.load_state_dict
