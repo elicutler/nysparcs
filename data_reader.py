@@ -38,15 +38,15 @@ class LocalDataReader(DataReader):
     trainDF = self._readNumRowsFromStartRow(
       trainStart, trainEnd-trainStart
     )
-    trainDF['train_test'] = 'train'
+    trainDF['train_val'] = 'train'
     
-    testStart, testEnd = self.params['test_range']
-    testDF = self._readNumRowsFromStartRow(
-      testStart, testEnd-testStart
+    valStart, valEnd = self.params['val_range']
+    valDF = self._readNumRowsFromStartRow(
+      valStart, valEnd-valStart
     )
-    testDF['train_test'] = 'test'
+    valDF['train_val'] = 'val'
     
-    df = trainDF.append(testDF)
+    df = trainDF.append(valDF)
     return df
 
   @overrides
@@ -73,15 +73,15 @@ class SocrataDataReader(DataReader):
     trainDF = self._readNumRowsFromStartRow(
       trainStart, trainEnd-trainStart
     )
-    trainDF['train_test'] = 'train'
+    trainDF['train_val'] = 'train'
     
-    testStart, testEnd = self.params['test_range']
-    testDF = self._readNumRowsFromStartRow(
-      testStart, testEnd-testStart
+    valStart, valEnd = self.params['val_range']
+    valDF = self._readNumRowsFromStartRow(
+      valStart, valEnd-valStart
     )
-    testDF['train_test'] = 'test'
+    valDF['train_val'] = 'val'
     
-    df = trainDF.append(testDF)
+    df = trainDF.append(valDF)
     return df
     
   @overrides

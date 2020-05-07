@@ -50,26 +50,19 @@ class DataProcessor:
     
     self.dfIsProcessed = True
     
-  def getTrainValTestDFs(self) -> T.Tuple[pd.DataFrame]:
+  def getTrainValDFs(self) -> T.Tuple[pd.DataFrame]:
     
-    numTrainValRows = (self.df['train_test'] == 'train').sum()
-    lastTrainInd = int(numTrainValRows * (1-self.params['val_frac']))
     trainDF = (
-      self.df.iloc[:lastTrainInd]
-      .drop(columns=['train_test'])
+      self.df[self.df['train_val'] == 'train']
+      .drop(columns=['train_val'])
       .reset_index(drop=True)
     )
     valDF = (
-      self.df.iloc[lastTrainInd:numTrainValRows]
-      .drop(columns=['train_test'])
+      self.df[self.df['train_val'] == 'val']
+      .drop(columns=['train_val'])
       .reset_index(drop=True)
     )
-    testDF = (
-      self.df[self.df['train_test'] == 'test']
-      .drop(columns=['train_test'])
-      .reset_index(drop=True)
-    )
-    return trainDF, valDF, testDF
+    return trainDF, valDF
   
   def _sanitizeColNames(self,colNames) -> T.List[str]:
     return [self._sanitizeString(c) for c in colNames]
@@ -161,7 +154,7 @@ class DataProcessor:
     )
   
   def _removeUnusedCols(self) -> None:
-    keepCols = ['train_test', self.params['target']] + self.params['features']
+    keepCols = ['train_val', self.params['target']] + self.params['features']
     logger.info(
       f'Removing cols: {[c for c in self.df.columns if c not in keepCols]}'
     )

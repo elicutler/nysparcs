@@ -35,20 +35,20 @@ class TrainArgParser:
         ' this if cat_encoder_strat=\'target\'. (Default: 0.)'
       )
     )
-    self.parser.add_argument('--torch_model', type=str)
+    self.parser.add_argument('--pytorch_model', type=str)
     self.parser.add_argument('--sklearn_model', type=str)
     self.parser.add_argument('--local_data_path', type=str)
     self.parser.add_argument('--socrata_data_key', type=str)
     self.parser.add_argument(
       '--load_latest_state_dict', action='store_true', help=(
-        'Load latest state_dict of model and optimizer for torch model'
+        'Load latest state_dict of model and optimizer for pytorch model'
         ' of specified type. If none is found, do nothing.'
       )
     )
     self.parser.add_argument(
       '--load_state_dict', type=str, help=(
         'Load specified state_dict of model and optimizer for'
-        ' torch model of specified type. If not found, an error is thrown.'
+        ' pytorch model of specified type. If not found, an error is thrown.'
       )
     )
     self.parser.add_argument(
@@ -56,16 +56,8 @@ class TrainArgParser:
       help='Index range of training records'
     )
     self.parser.add_argument(
-      '--test_range', type=int, nargs=2, default=[1000, 1999],
-      help='Index range of test records'
-    )
-    self.parser.add_argument(
-      '--val_frac', type=float, default=0.2, help=(
-        'Fraction of training set to use for validation. If using a'
-        ' pytorch model, this will be a hold-out validation set. If'
-        ' using a scikit-learn model, k-fold cross-validation will'
-        ' be employed. (Default: 0.2)'
-      )
+      '--val_range', type=int, nargs=2, default=[1000, 1999],
+      help='Index range of hold-out validation records'
     )
     self.parser.add_argument(
       '--epochs', type=int, default=1,
@@ -73,7 +65,7 @@ class TrainArgParser:
     )
     self.parser.add_argument(
       '--batch_size', type=int, default=1, 
-      help='Batch size for pytorhc models. (Default: 1)'
+      help='Batch size for pytorch models. (Default: 1)'
     )
     self.parser.add_argument(
       '--num_workers', type=int, default=-1, 
@@ -138,7 +130,7 @@ class TrainArgParser:
     )
     assert args.target_encoder_prior >= 0.
     # pytorch model xor sklearn model
-    assert bool(args.torch_model) + bool(args.sklearn_model) == 1
+    assert bool(args.pytorch_model) + bool(args.sklearn_model) == 1
     # local data path xor internet data key
     assert bool(args.local_data_path) + bool(args.socrata_data_key) == 1
     # non-overlapping train/test intervals with start <= end  

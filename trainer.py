@@ -17,7 +17,7 @@ from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
 from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
-from utils import getNumCores
+from utils import getNumCores, nowTimestampStr
 
 logger = logging.getLogger(__name__)
     
@@ -56,7 +56,7 @@ class TorchTrainer(Trainer):
     
     self.dataProcessor.loadDF(rawDF)
     self.dataProcessor.processDF()
-    trainDF, valDF, testDF = self.dataProcessor.getTrainValTestDFs()
+    trainDF, valDF = self.dataProcessor.getTrainValDFs()
     
     self.sklearnProcessor.loadDF(trainDF)
     self.sklearnProcessor.fit()
@@ -64,8 +64,6 @@ class TorchTrainer(Trainer):
     
     torchTrainDF = TorchDataset(self.params, trainDF, sklearnProcessor)
     torchValDF = TorchDataset(self.params, valDF, sklearnProcessor)
-    torchTestDF = TorchDataset(self.params, testDF, sklearnProcessor)
-    
     
     batchSize = self.params['batch_size']
 #     numWorkers = (
@@ -77,9 +75,6 @@ class TorchTrainer(Trainer):
     )
     valLoader = DataLoader(
       torchValDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
-    )
-    testLoader = DataLoader(
-      torchTestDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
     )
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -93,7 +88,6 @@ class TorchTrainer(Trainer):
       or self.params['load_state_dict'] is not None
     ):
       self._loadStateDicts(model, optimizer)
-    breakpoint()
       
     lossCriterion = self._makeLossCriterion()
     
@@ -148,9 +142,26 @@ class TorchTrainer(Trainer):
       
     logger.info('Training complete')
 
+  @overrides
+  def saveModel(self, model, optimzer) -> None:
+    stateDictDir = pathlib.Path('artifacts/pytorch/')
+    modelName = self.params['pytorch_model']
+    
+    if modelName in pathlib.os.listdir(stateDictDir):
+      thisModelDir = stateDictDir/modelName
+      modelPath = thisModelDir/f'{modelName}_{nowTimestampStr}'
+      breakpoint() # TODO
+    else:
+      pathlib.os.mkdir(modelsDir/modelName)
+      self.saveModel(model, parameters)
+  
+  @overrides
+  def deployModel(self):
+    pass
+  
   def _loadModel(self, featureNames) -> T.Type[nn.Module]:
     
-    if (modelName := self.params['torch_model']) == 'CatEmbedNet':
+    if (modelName := self.params['pytorch_model']) == 'CatEmbedNet':
       modelClass = torch_models.CatEmbedNet
       
     else:
@@ -159,12 +170,12 @@ class TorchTrainer(Trainer):
     return modelClass(featureNames)
   
   def _loadStateDicts(self, model, optimizer) -> None:
-    stateDictDir = pathlib.Path('artifacts/torch/state_dict/')
+    stateDictDir = pathlib.Path('artifacts/pytorch/')
     
     if self.params['load_latest_state_dict']:
       
       if (
-        (modelName := self.params['torch_model'])
+        (modelName := self.params['pytorch_model'])
         not in (stateDictDirContents := pathlib.os.listdir(stateDictDir))
       ):
         logger.warning(f'No previous state dicts found for {modelName=}')
@@ -181,7 +192,6 @@ class TorchTrainer(Trainer):
           return
         else:
           stateDicts.sort(reverse=True)
-          return stateDicts[0]
         
     elif (targetStateDict := self.params['load_state_dict']) is not None:
       stateDicts = [
@@ -193,11 +203,15 @@ class TorchTrainer(Trainer):
       ]
       assert lenStateDicts > 0, f'{targetStateDict=} not found'
       assert lenStateDicts < 2, f'multiple statedicts found for {targetStateDict=}'
-      return stateDicts[0] # should be only one state dict found anyway
-        
-    raise Exception(
-      'Invalid combination of load_latest_state_dict and load_state_dict args'
-    )
+      
+    else:
+      raise Exception(
+        'Invalid combination of load_latest_state_dict and load_state_dict args'
+      )
+      
+    checkpoint = torch.load(stateDictDir/modelName/stateDicts[0])
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['model_state_dict'])
       
   def _makeLossCriterion(self) -> None:
     
@@ -212,23 +226,15 @@ class TorchTrainer(Trainer):
       
     return lossType(reduction='sum')
   
-  @overrides
-  def saveModel(self):
-    pass
-  
-  @overrides
-  def deployModel(self):
-    pass
-    
   
 class TrainerFactory:
   
   @staticmethod
   def make(params) -> T.Type[Trainer]:
     
-    modelType = 'torch' if params['torch_model'] is not None else 'sklearn'
+    modelType = 'pytorch' if params['pytorch_model'] is not None else 'sklearn'
 
-    if modelType == 'torch':
+    if modelType == 'pytorch':
       return TorchTrainer(params)
 
     raise ValueError(f'{modelType=} not recognized')

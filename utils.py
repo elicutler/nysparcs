@@ -5,6 +5,8 @@ import multiprocessing
 import re
 
 from collections.abc import Sequence
+from datetime import datetime
+from pytz import timezone
 
 logger = logging.getLogger(__name__)
     
@@ -29,3 +31,6 @@ def flattenNestedSeq(seq) -> list:
   if isinstance((el := flattened[0]), Sequence) and not isinstance(el, str):
     flattened = flattenNestedSeq(flattened)
   return flattened
+
+def nowTimestampStr() -> str:
+  return datetime.now(timezone('UTC')).strftime('%Y%m%d%H%M%S%f')
