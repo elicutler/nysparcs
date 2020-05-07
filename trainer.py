@@ -1,14 +1,16 @@
 
 import typing as T
 import logging
+import pathlib
+import re
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch_models
 
+from collections import OrderedDict
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
-from collections import OrderedDict
 from torch.utils.data import DataLoader
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
@@ -84,10 +86,15 @@ class TorchTrainer(Trainer):
     logger.info(f'Training on {device=}')
     
     model = self._loadModel(sklearnProcessor.featureNames).to(device)
-    breakpoint()
+    optimizer = optim.Adam(model.parameters())
     
-    weights = self._loadWeights() or model.parameters()
-    optimizer = optim.Adam(weights)
+    if (
+      self.params['load_latest_state_dict'] 
+      or self.params['load_state_dict'] is not None
+    ):
+      self._loadStateDicts(model, optimizer)
+    breakpoint()
+      
     lossCriterion = self._makeLossCriterion()
     
     allEpochTrainLosses = []
@@ -151,15 +158,51 @@ class TorchTrainer(Trainer):
       
     return modelClass(featureNames)
   
-  def _loadWeights(self) -> T.Union[None, OrderedDict]:
-    if (weightsPath := self.params['init_weights']) is None:
-      return
+  def _loadStateDicts(self, model, optimizer) -> None:
+    stateDictDir = pathlib.Path('artifacts/torch/state_dict/')
     
-  
+    if self.params['load_latest_state_dict']:
+      
+      if (
+        (modelName := self.params['torch_model'])
+        not in (stateDictDirContents := pathlib.os.listdir(stateDictDir))
+      ):
+        logger.warning(f'No previous state dicts found for {modelName=}')
+        return
+      
+      else:
+        stateDicts = [
+          a for a in pathlib.os.listdir(stateDictDir/modelName)
+          if a.startswith(modelName)
+        ]
+        
+        if len(stateDicts) == 0:
+          logger.warning(f'No previous state dicts found for {modelName=}')
+          return
+        else:
+          stateDicts.sort(reverse=True)
+          return stateDicts[0]
+        
+    elif (targetStateDict := self.params['load_state_dict']) is not None:
+      stateDicts = [
+        a for a in pathlib.os.listdir(stateDictDir/modelName)
+        if (
+          re.sub('\.pt|\.pth', '', targetStateDict) 
+          == re.sub('\.pt|\.pth', '', a)
+        )
+      ]
+      assert lenStateDicts > 0, f'{targetStateDict=} not found'
+      assert lenStateDicts < 2, f'multiple statedicts found for {targetStateDict=}'
+      return stateDicts[0] # should be only one state dict found anyway
+        
+    raise Exception(
+      'Invalid combination of load_latest_state_dict and load_state_dict args'
+    )
+      
   def _makeLossCriterion(self) -> None:
     
     if (target := self.params['target']) == 'prior_auth_dispo':
-      lossType = nn.BCEWithLogits
+      lossType = nn.BCEWithLogitsLoss
       
     elif target == 'los':
       lossType = nn.L1Loss

@@ -40,14 +40,15 @@ class TrainArgParser:
     self.parser.add_argument('--local_data_path', type=str)
     self.parser.add_argument('--socrata_data_key', type=str)
     self.parser.add_argument(
-      '--load_state_dict', type=str, default=None, help=(
-        'How to initialize pytorch model params and optimizer. '
-        ' If "latest", then use the most recent stored state_dict;'
-        ' otherwise if none are available, train from scratch. '
-        ' Otherwise pass the name of the stored state_dict for the given model'
-        ' type. If the name is not found, an error will be thrown.'
-        'If this arg is not passed, the model will be trained from scratch.'
-        ' (Default: None)'
+      '--load_latest_state_dict', action='store_true', help=(
+        'Load latest state_dict of model and optimizer for torch model'
+        ' of specified type. If none is found, do nothing.'
+      )
+    )
+    self.parser.add_argument(
+      '--load_state_dict', type=str, help=(
+        'Load specified state_dict of model and optimizer for'
+        ' torch model of specified type. If not found, an error is thrown.'
       )
     )
     self.parser.add_argument(
@@ -152,4 +153,9 @@ class TrainArgParser:
     # only set epochs and/or batch_size for pytorch models
     assert not (args.sklearn_model and (args.epochs or args.batch_size))
     # only pass state_dict for pytorch models
-    assert not (args.sklearn_model and args.load_state_dict
+    assert not (
+      args.sklearn_model 
+      and (args.load_latest_state_dict or args.load_state_dict)
+    )
+    # pass either latest or specified state dict but not both
+    assert not (args.load_latest_state_dict and args.load_state_dict)
