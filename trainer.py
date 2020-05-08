@@ -32,12 +32,13 @@ class Trainer(EnforceOverrides):
     pass
   
   @abstractmethod
-  def saveModel(self):
+  def deployModel(self):
     pass
   
   @abstractmethod
-  def deployModel(self):
+  def _saveModel(self):
     pass
+  
   
 
 class TorchTrainer(Trainer):
@@ -141,19 +142,24 @@ class TorchTrainer(Trainer):
       logger.info(f'{avgEpochValLoss=}')
       
     logger.info('Training complete')
+    self._saveModel(model, optimizer)
 
   @overrides
-  def saveModel(self, model, optimzer) -> None:
+  def _saveModel(self, model, optimizer) -> None:
     stateDictDir = pathlib.Path('artifacts/pytorch/')
     modelName = self.params['pytorch_model']
     
-    if modelName in pathlib.os.listdir(stateDictDir):
-      thisModelDir = stateDictDir/modelName
-      modelPath = thisModelDir/f'{modelName}_{nowTimestampStr}'
-      breakpoint() # TODO
-    else:
-      pathlib.os.mkdir(modelsDir/modelName)
-      self.saveModel(model, parameters)
+    if modelName not in pathlib.os.listdir(stateDictDicr):
+      pathlib.os.mkdir(stateDictDir/modelName)
+      
+    thisModelDir = stateDictDir/modelName
+    modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.pt'
+    stateDict = {
+      model.state_dict(),
+      optimizer.state_dict()
+    }
+    torch.save(stateDict, modelPath)
+    logger.info(f'Saving model and optimizer state dicts to {modelPath}')
   
   @overrides
   def deployModel(self):
@@ -209,9 +215,12 @@ class TorchTrainer(Trainer):
         'Invalid combination of load_latest_state_dict and load_state_dict args'
       )
       
-    checkpoint = torch.load(stateDictDir/modelName/stateDicts[0])
+    stateDictsPath = stateDictDir/modelName/stateDicts[0]
+    logger.info(f'Loading model and optimizer state dicts from {stateDictsPath}')
+    
+    checkpoint = torch.load(stateDictsPath)
     model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
       
   def _makeLossCriterion(self) -> None:
     

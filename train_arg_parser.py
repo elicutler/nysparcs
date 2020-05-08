@@ -135,13 +135,11 @@ class TrainArgParser:
     assert bool(args.local_data_path) + bool(args.socrata_data_key) == 1
     # non-overlapping train/test intervals with start <= end  
     assert args.train_range[0] <= args.train_range[1]
-    assert args.test_range[0] <= args.test_range[1]
+    assert args.val_range[0] <= args.val_range[1]
     assert (
-      (args.train_range[1] <= args.test_range[0])
-      or (args.test_range[1] <= args.train_range[0])
+      (args.train_range[1] <= args.val_range[0])
+      or (args.val_range[1] <= args.train_range[0])
     )
-    # validation fraction
-    assert 0. <= args.val_frac < 1.
     # only set epochs and/or batch_size for pytorch models
     assert not (args.sklearn_model and (args.epochs or args.batch_size))
     # only pass state_dict for pytorch models
