@@ -77,7 +77,7 @@ class SKLearnProcessor:
     elif catEncoderStrat == 'target':
       return TargetEncoder(priorFrac=self.params['target_encoder_prior'])
 
-    raise ValueError(f'{cat_encoder=} not recognized')
+    raise ValueError(f'{catEncoderStrat=} not recognized')
     
   def _setFeatureNames(self, trainX, numFeatureCols, catFeatureCols) -> None:
         

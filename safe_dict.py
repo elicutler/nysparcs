@@ -15,12 +15,13 @@ class SafeDict(dict):
     
   @overrides
   def __setitem__(self, key, value):
+    # deliberate violation of Liskov substitution principle
     raise NotImplementedError('Cannot modify SafeDict')
 
   @overrides
   def copy(self):
-    # Cannot simply deepcopy(self), due to prohibition on __setitem__
-    return SafeDict({k: deepcopy(v) for k, v in self.items()})
+    # cannot simply deepcopy(self) due to prohibition on __setitem__
+    return SafeDict(self.copyUnsafeDict())
   
   def copyUnsafeDict(self):
     return {k: deepcopy(v) for k, v in self.items()}

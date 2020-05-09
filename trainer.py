@@ -12,12 +12,14 @@ from collections import OrderedDict
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from torch.utils.data import DataLoader
+from sklearn.pipeline import Pipeline
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
 from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
 from utils import getNumCores, nowTimestampStr
+from sklearn_pipelines import SKLearnPipelineMaker
 
 logger = logging.getLogger(__name__)
     
@@ -261,6 +263,8 @@ class SKLearnTrainer(Trainer):
     
     self.dataReader = DataReaderFactory.make(params)
     self.dataProcessor = DataProcessor(params)
+    self.sklearnPipelineMaker = SKLearnPipelineMaker(params)
+    self.inputColTypes = None
     
   @overrides
   def train(self) -> None:
@@ -273,6 +277,9 @@ class SKLearnTrainer(Trainer):
     
     self.inputColTypes = trainDF.dtypes
     
+    self.sklearnPipelineMaker.loadInputColTypes(self.inputColTypes)
+    pipeline = self.sklearnPipelineMaker.makePipeline()
+    
     breakpoint()
     
   @overrides 
@@ -282,6 +289,16 @@ class SKLearnTrainer(Trainer):
   @overrides
   def deployModel(self) -> None:
     pass
+  
+  def _loadSKLearnPipeline(self) -> Pipeline:
+    
+    if (pipeName := self.params['sklearn_pipeline']) == 'xgboost':
+      return 
+      
+    else:
+      raise ValueError(f'{pipeName=} not recognized')
+      
+    return pipeMaker(self.params, self.inputColTypes)
   
   
 class TrainerFactory:
