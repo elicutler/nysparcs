@@ -21,6 +21,7 @@ if __name__ == '__main__':
   
   trainer = TrainerFactory.make(params)
   trainer.train()
+  trainer.saveModel()
   
   if params.deploy:
     trainer.deployModel()

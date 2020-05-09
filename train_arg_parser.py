@@ -41,7 +41,7 @@ class TrainArgParser:
     self.parser.add_argument('--socrata_data_key', type=str)
     self.parser.add_argument(
       '--load_latest_state_dict', action='store_true', help=(
-        'Load latest state_dict of model and optimizer for pytorch model'
+        'Load latest model and optimizer state_dicts for pytorch model'
         ' of specified type. If none is found, do nothing.'
       )
     )

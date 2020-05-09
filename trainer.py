@@ -32,13 +32,12 @@ class Trainer(EnforceOverrides):
     pass
   
   @abstractmethod
-  def deployModel(self):
+  def saveModel(self):
     pass
   
   @abstractmethod
-  def _saveModel(self):
+  def deployModel(self):
     pass
-  
   
 
 class TorchTrainer(Trainer):
@@ -49,6 +48,10 @@ class TorchTrainer(Trainer):
     self.dataReader = DataReaderFactory.make(params)
     self.dataProcessor = DataProcessor(params)
     self.sklearnProcessor = SKLearnProcessor(params)
+    
+    self.inputColTypes = None
+    self.model = None
+    self.optimizer = None
   
   @overrides
   def train(self):
@@ -58,6 +61,8 @@ class TorchTrainer(Trainer):
     self.dataProcessor.loadDF(rawDF)
     self.dataProcessor.processDF()
     trainDF, valDF = self.dataProcessor.getTrainValDFs()
+    
+    self.inputColTypes = trainDF.dtypes
     
     self.sklearnProcessor.loadDF(trainDF)
     self.sklearnProcessor.fit()
@@ -81,14 +86,14 @@ class TorchTrainer(Trainer):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     logger.info(f'Training on {device=}')
     
-    model = self._loadModel(sklearnProcessor.featureNames).to(device)
-    optimizer = optim.Adam(model.parameters())
+    self.model = self._loadModel(sklearnProcessor.featureNames).to(device)
+    self.optimizer = optim.Adam(self.model.parameters())
     
     if (
       self.params['load_latest_state_dict'] 
       or self.params['load_state_dict'] is not None
     ):
-      self._loadStateDicts(model, optimizer)
+      self._loadStateDicts()
       
     lossCriterion = self._makeLossCriterion()
     
@@ -109,11 +114,11 @@ class TorchTrainer(Trainer):
         X = X.to(device)
         y = y.to(device)
         
-        optimizer.zero_grad()
-        preds = model(X)
+        self.optimizer.zero_grad()
+        preds = self.model(X)
         loss = lossCriterion(preds, y)
         loss.backward()
-        optimizer.step()
+        self.optimizer.step()
         
         runningEpochTrainLoss += loss.item()
         runningEpochTrainNobs += y.shape[0]
@@ -127,11 +132,11 @@ class TorchTrainer(Trainer):
       
       for X, y in valLoader:
         
-        with EvalNoGrad(model):
+        with EvalNoGrad(self.model):
           X = X.to(device)
           y = y.to(device)
           
-          preds = model(X)
+          preds = self.model(X)
           loss = lossCriterion(preds, y)
           
         runningEpochValLoss += loss.item()
@@ -142,24 +147,24 @@ class TorchTrainer(Trainer):
       logger.info(f'{avgEpochValLoss=}')
       
     logger.info('Training complete')
-    self._saveModel(model, optimizer)
 
   @overrides
-  def _saveModel(self, model, optimizer) -> None:
-    stateDictDir = pathlib.Path('artifacts/pytorch/')
+  def saveModel(self) -> None:
+    pytorchArtifactsDir = pathlib.Path('artifacts/pytorch/')
     modelName = self.params['pytorch_model']
     
-    if modelName not in pathlib.os.listdir(stateDictDir):
-      pathlib.os.mkdir(stateDictDir/modelName)
+    if modelName not in pathlib.os.listdir(pytorchArtifactsDir):
+      pathlib.os.mkdir(pytorchArtifactsDir/modelName)
       
-    thisModelDir = stateDictDir/modelName
+    thisModelDir = pytorchArtifactsDir/modelName
     modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.pt'
-    stateDict = {
-      'model_state_dict': model.state_dict(),
-      'optimizer_state_dict': optimizer.state_dict()
+    artifacts = {
+      'input_col_types': self.inputColTypes,
+      'model_state_dict': self.model.state_dict(),
+      'optimizer_state_dict': self.optimizer.state_dict()
     }
-    torch.save(stateDict, modelPath)
-    logger.info(f'Saving model and optimizer state dicts to {modelPath}')
+    torch.save(artifacts, modelPath)
+    logger.info(f'Saving model artifacts to {modelPath}')
   
   @overrides
   def deployModel(self):
@@ -175,52 +180,53 @@ class TorchTrainer(Trainer):
       
     return modelClass(featureNames)
   
-  def _loadStateDicts(self, model, optimizer) -> None:
-    stateDictDir = pathlib.Path('artifacts/pytorch/')
+  def _loadStateDicts(self) -> None:
+    pytorchArtifactsDir = pathlib.Path('artifacts/pytorch/')
     
     if self.params['load_latest_state_dict']:
       
       if (
         (modelName := self.params['pytorch_model'])
-        not in (stateDictDirContents := pathlib.os.listdir(stateDictDir))
+        not in (pytorchArtifactsDirContents := pathlib.os.listdir(pytorchArtifactsDir))
       ):
         logger.warning(f'No previous state dicts found for {modelName=}')
         return
       
       else:
-        stateDicts = [
-          a for a in pathlib.os.listdir(stateDictDir/modelName)
+        artifacts = [
+          a for a in pathlib.os.listdir(pytorchArtifactsDir/modelName)
           if a.startswith(modelName)
         ]
         
-        if len(stateDicts) == 0:
+        if len(artifacts) == 0:
           logger.warning(f'No previous state dicts found for {modelName=}')
           return
         else:
-          stateDicts.sort(reverse=True)
+          artifacts.sort(reverse=True)
         
-    elif (targetStateDict := self.params['load_state_dict']) is not None:
-      stateDicts = [
-        a for a in pathlib.os.listdir(stateDictDir/modelName)
+    elif (targetModel := self.params['load_state_dict']) is not None:
+      artifacts = [
+        a for a in pathlib.os.listdir(pytorchArtifactsDir/modelName)
         if (
-          re.sub('\.pt|\.pth', '', targetStateDict) 
+          re.sub('\.pt|\.pth', '', targetModel) 
           == re.sub('\.pt|\.pth', '', a)
         )
       ]
-      assert lenStateDicts > 0, f'{targetStateDict=} not found'
-      assert lenStateDicts < 2, f'multiple statedicts found for {targetStateDict=}'
+      assert len(artifacts) > 0, f'{targetModel=} not found'
+      assert len(artifacts) < 2, f'multiple artifacts found for {targetModel=}'
       
     else:
       raise Exception(
         'Invalid combination of load_latest_state_dict and load_state_dict args'
       )
       
-    stateDictsPath = stateDictDir/modelName/stateDicts[0]
-    logger.info(f'Loading model and optimizer state dicts from {stateDictsPath}')
+    artifactsPath = pytorchArtifactsDir/modelName/artifacts[0]
+    logger.info(f'Loading model and optimizer state dicts from {artifactsPath}')
     
-    checkpoint = torch.load(stateDictsPath)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    checkpoint = torch.load(artifactsPath)
+    self._validateInputColumns(checkpoint['input_col_types'])
+    self.model.load_state_dict(checkpoint['model_state_dict'])
+    self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
       
   def _makeLossCriterion(self) -> None:
     
@@ -234,6 +240,16 @@ class TorchTrainer(Trainer):
       raise ValueErro(f'{target=} not recognized')
       
     return lossType(reduction='sum')
+  
+  def _validateInputColumns(self, loadedInputColTypes) -> None:
+    assert (self.inputColTypes.index == loadedInputColTypes.index).all(), (
+      f'Input column names do not match:\n{self.inputColTypes.columns=}'
+      f'\n{loadedInputColTypes.columns=}'
+    )
+    assert (self.inputColTypes.values == loadedInputColTypes.values).all(), (
+      f'Input column data types do not match:\n{self.inputColTypes.columns}'
+      '\n{loadedInputColTypes.columns=}'
+    )
   
   
 class TrainerFactory:
