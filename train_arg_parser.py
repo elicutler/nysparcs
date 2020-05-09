@@ -60,12 +60,10 @@ class TrainArgParser:
       help='Index range of hold-out validation records'
     )
     self.parser.add_argument(
-      '--epochs', type=int, default=1,
-      help='Number of epochs to train pytorch model for. (Default: 1)'
+      '--epochs', type=int, help='Number of epochs to train pytorch model for.'
     )
     self.parser.add_argument(
-      '--batch_size', type=int, default=1, 
-      help='Batch size for pytorch models. (Default: 1)'
+      '--batch_size', type=int, help='Batch size for pytorch models.'
     )
     self.parser.add_argument(
       '--num_workers', type=int, default=-1, 

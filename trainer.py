@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
   
 class Trainer(EnforceOverrides):
   
+  @abstractmethod
   def __init__(self, params) -> None:
     self.params = params.copy()
     
@@ -42,6 +43,7 @@ class Trainer(EnforceOverrides):
 
 class TorchTrainer(Trainer):
 
+  @overrides
   def __init__(self, params) -> None:
     super().__init__(params)
     
@@ -250,6 +252,36 @@ class TorchTrainer(Trainer):
       f'Input column data types do not match:\n{self.inputColTypes.columns}'
       '\n{loadedInputColTypes.columns=}'
     )
+    
+    
+class SKLearnTrainer(Trainer):
+  
+  def __init__(self, params) -> None:
+    super().__init__(params)
+    
+    self.dataReader = DataReaderFactory.make(params)
+    self.dataProcessor = DataProcessor(params)
+    
+  @overrides
+  def train(self) -> None:
+    
+    rawDF = self.dataReader.read()
+    
+    self.dataProcessor.loadDF(rawDF)
+    self.dataProcessor.processDF()
+    trainDF, valDF = self.dataProcessor.getTrainValDFs()
+    
+    self.inputColTypes = trainDF.dtypes
+    
+    breakpoint()
+    
+  @overrides 
+  def saveModel(self) -> None:
+    pass
+  
+  @overrides
+  def deployModel(self) -> None:
+    pass
   
   
 class TrainerFactory:
@@ -260,6 +292,12 @@ class TrainerFactory:
     modelType = 'pytorch' if params['pytorch_model'] is not None else 'sklearn'
 
     if modelType == 'pytorch':
-      return TorchTrainer(params)
-
-    raise ValueError(f'{modelType=} not recognized')
+      trainer = TorchTrainer
+    
+    elif modelType == 'sklearn':
+      trainer = SKLearnTrainer
+    
+    else:
+      raise ValueError(f'{modelType=} not recognized')
+      
+    return trainer(params)
