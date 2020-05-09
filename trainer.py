@@ -149,14 +149,14 @@ class TorchTrainer(Trainer):
     stateDictDir = pathlib.Path('artifacts/pytorch/')
     modelName = self.params['pytorch_model']
     
-    if modelName not in pathlib.os.listdir(stateDictDicr):
+    if modelName not in pathlib.os.listdir(stateDictDir):
       pathlib.os.mkdir(stateDictDir/modelName)
       
     thisModelDir = stateDictDir/modelName
     modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.pt'
     stateDict = {
-      model.state_dict(),
-      optimizer.state_dict()
+      'model_state_dict': model.state_dict(),
+      'optimizer_state_dict': optimizer.state_dict()
     }
     torch.save(stateDict, modelPath)
     logger.info(f'Saving model and optimizer state dicts to {modelPath}')
