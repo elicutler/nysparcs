@@ -38,7 +38,6 @@ class Trainer(EnforceOverrides):
     self.dataProcessor = DataProcessor(params)
     
     self.inputColTypes = None
-    self.model = None
     self.valPerformanceMetrics = None
     
   @abstractmethod
@@ -98,6 +97,7 @@ class TorchTrainer(Trainer):
   def __init__(self, params) -> None:
     super().__init__(params)
     self.sklearnProcessor = SKLearnProcessor(params)
+    self.model = None
     self.optimizer = None
   
   @overrides
@@ -147,6 +147,9 @@ class TorchTrainer(Trainer):
     allEpochTrainLosses = []
     allEpochValLosses = []
     
+    finalEpochValPreds = torch.empty(0, dtype=torch.float)
+    finalEpochValActuals = torch.empty(0, dtype=torch.float)
+    
     torch.manual_seed(FIXED_SEED)
     
     for i in range(1, (numEpochs := self.params['epochs'])+1):
@@ -170,7 +173,7 @@ class TorchTrainer(Trainer):
         self.optimizer.step()
         
         runningEpochTrainLoss += loss.item()
-        runningEpochTrainNobs += y.shape[0]
+        runningEpochTrainNobs += y.size()[0]
         
       avgEpochTrainLoss = runningEpochTrainLoss / runningEpochTrainNobs
       allEpochTrainLosses.append(avgEpochTrainLoss)
@@ -189,7 +192,14 @@ class TorchTrainer(Trainer):
           loss = lossCriterion(preds, y)
           
         runningEpochValLoss += loss.item()
-        runningEpochValNobs += y.shape[0]
+        runningEpochValNobs += y.size()[0]
+        
+        if i == numEpochs: # last epoch
+          finalEpochValPreds = torch.cat(
+            [torch.sigmoid(finalEpochValPreds), preds.squeeze()]
+          )
+          finalEpochValActuals = torch.cat([finalEpochValActuals, y.squeeze()])
+          breakpoint()
           
       avgEpochValLoss = runningEpochValLoss / runningEpochValNobs
       allEpochValLosses.append(avgEpochValLoss)
@@ -208,13 +218,16 @@ class TorchTrainer(Trainer):
     
     modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.pt'
     artifacts = {
+      'target': self.params['target'],
+      'val_range': self.params['val_range'],
       'input_col_types': self.inputColTypes,
       'model_state_dict': self.model.state_dict(),
-      'optimizer_state_dict': self.optimizer.state_dict()
+      'optimizer_state_dict': self.optimizer.state_dict(),
+      'val_perf_metrics': self.valPerformanceMetrics
     }
     torch.save(artifacts, modelPath)
     logger.info(f'Saving model artifacts to {modelPath}')
-  
+
   @overrides
   def deployModel(self):
     pass
@@ -331,7 +344,7 @@ class SKLearnTrainer(Trainer):
     valX, valY = self._splitXY(valDF)
     valPreds = pipeline.predict(valX)
     
-    self.model = pipeline
+    self.pipeline = pipeline
     self.valPerformanceMetrics = self._calcPerformanceMetrics(valY, valPreds)
     
   @overrides 
@@ -340,7 +353,7 @@ class SKLearnTrainer(Trainer):
       'target': self.params['target'],
       'val_range': self.params['val_range'],
       'input_col_types': self.inputColTypes,
-      'model': self.model,
+      'pipeline': self.pipeline,
       'val_perf_metrics': self.valPerformanceMetrics
     }
     sklearnArtifactsDir = pathlib.Path('artifacts/sklearn')
