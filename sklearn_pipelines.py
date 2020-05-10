@@ -21,6 +21,7 @@ class SKLearnPipelineMaker:
     self.params = params.copy()
     self.catEncoder = self._getCatEncoder()
     
+    self.target = params['target']
     self.n_iter = params['n_iter']
     self.n_jobs = (
       getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
@@ -34,10 +35,12 @@ class SKLearnPipelineMaker:
   def loadInputColTypes(self, inputColTypes) -> None:
     self.inputColTypes = inputColTypes.copy()
     self.catFeatureCols = (
-      self.inputColTypes[self.inputColTypes == 'object'].index.to_list()
+      self.inputColTypes.drop(self.target)[self.inputColTypes == 'object']
+      .index.to_list()
     )
     self.numFeatureCols = [
-      c for c in self.inputColTypes.index if c not in self.catFeatureCols
+      c for c in self.inputColTypes.drop(self.target).index 
+      if c not in self.catFeatureCols
     ]
     
   def makePipeline(self) -> Pipeline:

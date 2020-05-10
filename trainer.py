@@ -288,7 +288,10 @@ class SKLearnTrainer(Trainer):
       f'Running hyperparameter search for {self.params["n_iter"]} iterations'
     )
     pipeline.fit(trainX, trainY)
-    breakpoint()
+    logger.info('Training complete')
+    
+    valX, valY = self._splitXY(valDF)
+    valPreds = pipeline.predict(valX)
     
   @overrides 
   def saveModel(self) -> None:
