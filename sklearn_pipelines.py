@@ -74,24 +74,23 @@ class SKLearnPipelineMaker:
       
   def _makeGBCEstimator(self, processorPipe) -> RandomizedSearchCV: 
     
-    gbc = GradientBoostingClassifier()
     estimatorPipe = Pipeline([
       ('processor', processorPipe),
-      ('gbc', gbc)
+      ('gbc', GradientBoostingClassifier())
     ])
-    breakpoint()
     paramDistributions = {
-      'estimator__learning_rate': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.],
-      'estimator__max_depth': [2, 3, 4, 6],
-      'estimator__max_features': [0.25, 0.5, 0.75, 1.],
-      'estimator__min_samples_leaf': [1, 2, 4],
-      'estimator__min_samples_split': [2, 4, 8],
-      'estimator__n_estimators': [100, 500, 1000],
-      'estimator__random_state': FIXED_SEED,
-      'estimator__subsample': [0.1, 0.5, 0.8, 1.]
+      'processor__cat_pipe__cat_encoder__priorFrac': [0., 0.01, 0.1, 0.5, 1.],
+      'gbc__learning_rate': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.],
+      'gbc__max_depth': [2, 3, 4, 6],
+      'gbc__max_features': [0.25, 0.5, 0.75, 1.],
+      'gbc__min_samples_leaf': [1, 2, 4],
+      'gbc__min_samples_split': [2, 4, 8],
+      'gbc__n_estimators': [100, 500, 1000],
+      'gbc__subsample': [0.1, 0.5, 0.8, 1.]
     }
     hyperparamSearchPipe = RandomizedSearchCV(
-      estimatorPipe, paramDistributions, n_iters=self.n_iters, 
-      scoring=self.eval_metric, n_jobs=self.n_jobs, random_state=FIXED_SEED
+      estimatorPipe, paramDistributions, n_iter=self.n_iter, 
+      scoring=self.eval_metric, n_jobs=self.n_jobs, random_state=FIXED_SEED,
+      verbose=1
     )
     return hyperparamSearchPipe

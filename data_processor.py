@@ -181,7 +181,7 @@ class DataProcessor:
       
       rmNumRows = initNumRows - self.df.shape[0]
       logger.info(
-        f'Removed {rmNumRows}/{initNumRows} rows with \'{c}\''
-        f' beyond {quantile=} value.'
+        f'Removed {rmNumRows}/{initNumRows} rows ({rmNumRows/initNumRows:.0%})' 
+        f' with \'{c}\' beyond {quantile=} value.'
       )
       

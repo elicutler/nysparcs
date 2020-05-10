@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch_models
+import pandas as pd
 
 from collections import OrderedDict
 from abc import abstractmethod
@@ -282,6 +283,11 @@ class SKLearnTrainer(Trainer):
     self.sklearnPipelineMaker.loadInputColTypes(self.inputColTypes)
     pipeline = self.sklearnPipelineMaker.makePipeline()
     
+    trainX, trainY = self._splitXY(trainDF)
+    logger.info(
+      f'Running hyperparameter search for {self.params["n_iter"]} iterations'
+    )
+    pipeline.fit(trainX, trainY)
     breakpoint()
     
   @overrides 
@@ -301,6 +307,14 @@ class SKLearnTrainer(Trainer):
       raise ValueError(f'{pipeName=} not recognized')
       
     return pipeMaker(self.params, self.inputColTypes)
+  
+  def _splitXY(self, inDF) -> T.Tuple[pd.DataFrame, pd.Series]:
+    target = self.params['target']
+    df = inDF.copy()
+    X = df.drop(columns=[target])
+    y = df[target]
+    return X, y
+    
   
   
 class TrainerFactory:

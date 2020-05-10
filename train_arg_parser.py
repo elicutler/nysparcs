@@ -52,6 +52,11 @@ class TrainArgParser:
       )
     )
     self.parser.add_argument(
+      '--eval_metric', type=str, help=(
+        'Scoring metric for sk-learn model selection'
+      )
+    )
+    self.parser.add_argument(
       '--train_range', type=int, nargs=2, default=[0, 999],
       help='Index range of training records'
     )
@@ -144,7 +149,7 @@ class TrainArgParser:
       or (args.val_range[1] <= args.train_range[0])
     )
     # only set epochs and/or batch_size for pytorch models
-    assert bool(args.pytorch_model) is bool(args.epoch) is bool(args.batch_size)
+    assert bool(args.pytorch_model) is bool(args.epochs) is bool(args.batch_size)
     # only pass state_dict, optionally, for pytorch models
     assert not (
       args.sklearn_model 
@@ -152,5 +157,5 @@ class TrainArgParser:
     )
     # pass either latest or specified state dict but not both
     assert not (args.load_latest_state_dict and args.load_state_dict)
-    # only pass n_iter for sklearn models
-    assert bool(args.sklearn_model) is bool(n_iter)
+    # only pass eval_metric and n_iter for sklearn models
+    assert bool(args.sklearn_model) is bool(args.eval_metric) is bool(args.n_iter)
