@@ -351,7 +351,9 @@ class SKLearnTrainer(Trainer):
       pathlib.os.mkdir(thisModelDir)
       
     modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.sk'
-    pickle.dump(artifacts, modelPath, protocol=5)
+    with open(modelPath, 'wb') as file:
+      pickle.dump(artifacts, file, protocol=5)
+      
     logger.info(f'Saving model artifacts to {modelPath}')
     
   @overrides
