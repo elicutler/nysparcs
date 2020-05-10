@@ -18,7 +18,7 @@ from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
 from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
-from utils import getNumCores, nowTimestampStr
+from utils import getNumCores, nowTimestampStr, FIXED_SEED
 from sklearn_pipelines import SKLearnPipelineMaker
 
 logger = logging.getLogger(__name__)
@@ -103,6 +103,8 @@ class TorchTrainer(Trainer):
     
     allEpochTrainLosses = []
     allEpochValLosses = []
+    
+    torch.manual_seed(FIXED_SEED)
     
     for i in range(1, (numEpochs := self.params['epochs'])+1):
       logger.info(f'Training epoch {i}/{numEpochs}')

@@ -32,5 +32,9 @@ def flattenNestedSeq(seq) -> list:
     flattened = flattenNestedSeq(flattened)
   return flattened
 
+
 def nowTimestampStr() -> str:
   return datetime.now(timezone('UTC')).strftime('%Y%m%d%H%M%S%f')
+
+
+FIXED_SEED = 617

@@ -17,6 +17,7 @@ if __name__ == '__main__':
   logger.info('Starting analysis...')
 
   parser = TrainArgParser()
+#   params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'torch_test_local']))
   params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'sklearn_test_local']))
   
   trainer = TrainerFactory.make(params)

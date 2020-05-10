@@ -36,7 +36,7 @@ class TrainArgParser:
 #       )
 #     )
     self.parser.add_argument('--pytorch_model', type=str)
-    self.parser.add_argument('--sklearn_pipeline', type=str)
+    self.parser.add_argument('--sklearn_model', type=str)
     self.parser.add_argument('--local_data_path', type=str)
     self.parser.add_argument('--socrata_data_key', type=str)
     self.parser.add_argument(
@@ -64,6 +64,11 @@ class TrainArgParser:
     )
     self.parser.add_argument(
       '--batch_size', type=int, help='Batch size for pytorch models.'
+    )
+    self.parser.add_argument(
+      '--n_iter', type=int, help=(
+        'Number of iterations for randomized search of sklearn models.'
+      )
     )
     self.parser.add_argument(
       '--num_workers', type=int, default=-1, 
@@ -127,8 +132,8 @@ class TrainArgParser:
 #       args.cat_encoder_strat == 'one_hot' and args.target_encoder_prior > 0.
 #     )
 #     assert args.target_encoder_prior >= 0.
-    # pytorch model xor sklearn pipeline
-    assert bool(args.pytorch_model) + bool(args.sklearn_pipeline) == 1
+    # pytorch model xor sklearn model
+    assert bool(args.pytorch_model) + bool(args.sklearn_model) == 1
     # local data path xor internet data key
     assert bool(args.local_data_path) + bool(args.socrata_data_key) == 1
     # non-overlapping train/test intervals with start <= end  
@@ -139,11 +144,13 @@ class TrainArgParser:
       or (args.val_range[1] <= args.train_range[0])
     )
     # only set epochs and/or batch_size for pytorch models
-    assert not (args.sklearn_pipeline and (args.epochs or args.batch_size))
-    # only pass state_dict for pytorch models
+    assert bool(args.pytorch_model) is bool(args.epoch) is bool(args.batch_size)
+    # only pass state_dict, optionally, for pytorch models
     assert not (
-      args.sklearn_pipeline 
+      args.sklearn_model 
       and (args.load_latest_state_dict or args.load_state_dict)
     )
     # pass either latest or specified state dict but not both
     assert not (args.load_latest_state_dict and args.load_state_dict)
+    # only pass n_iter for sklearn models
+    assert bool(args.sklearn_model) is bool(n_iter)
