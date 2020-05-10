@@ -8,12 +8,16 @@ import torch.nn as nn
 import torch.optim as optim
 import torch_models
 import pandas as pd
+import numpy as np
+import pickle
 
 from collections import OrderedDict
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from torch.utils.data import DataLoader
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score
+from sklearn.metrics import mean_absolute_error, median_absolute_error
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
@@ -30,6 +34,12 @@ class Trainer(EnforceOverrides):
   @abstractmethod
   def __init__(self, params) -> None:
     self.params = params.copy()
+    self.dataReader = DataReaderFactory.make(params)
+    self.dataProcessor = DataProcessor(params)
+    
+    self.inputColTypes = None
+    self.model = None
+    self.valPerformanceMetrics = None
     
   @abstractmethod
   def train(self):
@@ -43,19 +53,51 @@ class Trainer(EnforceOverrides):
   def deployModel(self):
     pass
   
+  @final
+  def _calcPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
+    
+    if (targetType := self.params['target_type']) == 'binary':
+      perfCalculator = self._calcBinaryPerformanceMetrics
+    
+    elif targetType == 'regression':
+      perfCalculator = self._calcRegressionPerformanceMetrics
+    
+    else:
+      raise ValueError(f'{targetType=} not recognized')
+      
+    metrics = perfCalculator(actuals, preds)
+    logger.info(f'Performance metrics:\n{metrics}')
+    return metrics
+      
+  @final
+  def _calcBinaryPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
+    metrics = {
+      'accuracy': accuracy_score(actuals, preds),
+      'roc_auc': roc_auc_score(actuals, preds),
+      'pr_auc': average_precision_score(actuals, preds),
+      'prop_trues': np.mean(actuals),
+      'nobs': preds.shape[0]
+    }
+    return metrics
+  
+  @final
+  def _calcRegressionPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
+    metrics = {
+      'mean_abs_err': mean_absolute_error(actuals, preds),
+      'med_abs_err': median_absolute_error(actuals, preds),
+      'mean_y': np.mean(actuals),
+      'med_y': np.median(y),
+      'nobs': preds.shape[0]
+    }
+    return metrics
+  
 
 class TorchTrainer(Trainer):
 
   @overrides
   def __init__(self, params) -> None:
     super().__init__(params)
-    
-    self.dataReader = DataReaderFactory.make(params)
-    self.dataProcessor = DataProcessor(params)
     self.sklearnProcessor = SKLearnProcessor(params)
-    
-    self.inputColTypes = None
-    self.model = None
     self.optimizer = None
   
   @overrides
@@ -159,11 +201,11 @@ class TorchTrainer(Trainer):
   def saveModel(self) -> None:
     pytorchArtifactsDir = pathlib.Path('artifacts/pytorch/')
     modelName = self.params['pytorch_model']
+    thisModelDir = pytorchArtifactsDir/modelName
     
     if modelName not in pathlib.os.listdir(pytorchArtifactsDir):
-      pathlib.os.mkdir(pytorchArtifactsDir/modelName)
-      
-    thisModelDir = pytorchArtifactsDir/modelName
+      pathlib.os.mkdir(thisModelDir)
+    
     modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.pt'
     artifacts = {
       'input_col_types': self.inputColTypes,
@@ -237,14 +279,14 @@ class TorchTrainer(Trainer):
       
   def _makeLossCriterion(self) -> None:
     
-    if (target := self.params['target']) == 'prior_auth_dispo':
+    if (targetType := self.params['target_type']) == 'binary':
       lossType = nn.BCEWithLogitsLoss
       
-    elif target == 'los':
+    elif targetType == 'regression':
       lossType = nn.L1Loss
       
     else:
-      raise ValueErro(f'{target=} not recognized')
+      raise ValueError(f'{targetType=} not recognized')
       
     return lossType(reduction='sum')
   
@@ -263,11 +305,7 @@ class SKLearnTrainer(Trainer):
   
   def __init__(self, params) -> None:
     super().__init__(params)
-    
-    self.dataReader = DataReaderFactory.make(params)
-    self.dataProcessor = DataProcessor(params)
     self.sklearnPipelineMaker = SKLearnPipelineMaker(params)
-    self.inputColTypes = None
     
   @overrides
   def train(self) -> None:
@@ -293,23 +331,32 @@ class SKLearnTrainer(Trainer):
     valX, valY = self._splitXY(valDF)
     valPreds = pipeline.predict(valX)
     
+    self.model = pipeline
+    self.valPerformanceMetrics = self._calcPerformanceMetrics(valY, valPreds)
+    
   @overrides 
   def saveModel(self) -> None:
-    pass
-  
+    artifacts = {
+      'target': self.params['target'],
+      'val_range': self.params['val_range'],
+      'input_col_types': self.inputColTypes,
+      'model': self.model,
+      'val_perf_metrics': self.valPerformanceMetrics
+    }
+    sklearnArtifactsDir = pathlib.Path('artifacts/sklearn')
+    modelName = self.params['sklearn_model']
+    thisModelDir = sklearnArtifactsDir/modelName
+    
+    if modelName not in pathlib.os.listdir(sklearnArtifactsDir):
+      pathlib.os.mkdir(thisModelDir)
+      
+    modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.sk'
+    pickle.dump(artifacts, modelPath, protocol=5)
+    logger.info(f'Saving model artifacts to {modelPath}')
+    
   @overrides
   def deployModel(self) -> None:
     pass
-  
-  def _loadSKLearnPipeline(self) -> Pipeline:
-    
-    if (pipeName := self.params['sklearn_pipeline']) == 'xgboost':
-      return 
-      
-    else:
-      raise ValueError(f'{pipeName=} not recognized')
-      
-    return pipeMaker(self.params, self.inputColTypes)
   
   def _splitXY(self, inDF) -> T.Tuple[pd.DataFrame, pd.Series]:
     target = self.params['target']
@@ -318,7 +365,6 @@ class SKLearnTrainer(Trainer):
     y = df[target]
     return X, y
     
-  
   
 class TrainerFactory:
   

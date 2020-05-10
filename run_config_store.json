@@ -2,6 +2,7 @@
 {
   "torch_test_local": {
     "target": "prior_auth_dispo",
+    "target_type": "binary",
     "features": [
       "hospital_county",
       "age_group",
@@ -26,6 +27,7 @@
   },
   "torch_test_cloud": {
     "target": "prior_auth_dispo",
+    "target_type": "binary",
     "features": [
       "hospital_county",
       "age_group",
@@ -50,6 +52,7 @@
   },
   "sklearn_test_local": {
     "target": "prior_auth_dispo",
+    "target_type": "binary",
     "features": [
       "hospital_county",
       "age_group",
