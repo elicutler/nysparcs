@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
   
-  logger.info('Starting analysis...')
+  logger.info('Starting analysis')
 
   parser = TrainArgParser()
 #   params = SafeDict.fromNamespace(parser.parseArgs())
@@ -28,4 +28,4 @@ if __name__ == '__main__':
   if params.deploy:
     trainer.deployModel()
 
-  logger.info('Analysis complete.')
+  logger.info('Analysis complete')

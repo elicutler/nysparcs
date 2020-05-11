@@ -16,7 +16,7 @@ from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from torch.utils.data import DataLoader
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score
+from sklearn.metrics import confusion_matrix, roc_auc_score, average_precision_score
 from sklearn.metrics import mean_absolute_error, median_absolute_error
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
@@ -71,7 +71,7 @@ class Trainer(EnforceOverrides):
   @final
   def _calcBinaryPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
     metrics = {
-      'accuracy': accuracy_score(actuals, preds),
+      'confusion_matrix': confusion_matrix(actuals, preds >= 0.5),
       'roc_auc': roc_auc_score(actuals, preds),
       'pr_auc': average_precision_score(actuals, preds),
       'prop_trues': np.mean(actuals),
@@ -194,17 +194,21 @@ class TorchTrainer(Trainer):
         runningEpochValLoss += loss.item()
         runningEpochValNobs += y.size()[0]
         
-        if i == numEpochs: # last epoch
+        if i == numEpochs: 
           finalEpochValPreds = torch.cat(
-            [torch.sigmoid(finalEpochValPreds), preds.squeeze()]
+            [finalEpochValPreds, torch.sigmoid(preds.squeeze())]
           )
           finalEpochValActuals = torch.cat([finalEpochValActuals, y.squeeze()])
-          breakpoint()
           
       avgEpochValLoss = runningEpochValLoss / runningEpochValNobs
       allEpochValLosses.append(avgEpochValLoss)
       logger.info(f'{avgEpochValLoss=}')
       
+      if i == numEpochs: 
+        self.valPerformanceMetrics = self._calcPerformanceMetrics(
+          finalEpochValActuals.numpy(), finalEpochValPreds.numpy()
+        )
+        
     logger.info('Training complete')
 
   @overrides
