@@ -107,8 +107,12 @@ class DataReaderFactory:
     dataLoc = 'local' if params['local_data_path'] is not None else 'socrata'
     
     if dataLoc == 'local':
-      return LocalDataReader(params)
+      dataReader = LocalDataReader
+      
     elif dataLoc == 'socrata':
-      return SocrataDataReader(params)
-    
-    raise ValueError(f'{dataLoc=} not recognized')
+      dataReader = SocrataDataReader
+      
+    else:
+      raise ValueError(f'{dataLoc=} not recognized')
+      
+    return dataReader(params)

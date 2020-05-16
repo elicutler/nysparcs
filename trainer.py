@@ -1,15 +1,12 @@
 
 import typing as T
 import logging
-import pathlib
-import re
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch_models
 import pandas as pd
 import numpy as np
-import pickle
 
 from collections import OrderedDict
 from abc import abstractmethod
@@ -21,11 +18,11 @@ from sklearn.metrics import mean_absolute_error, median_absolute_error
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
+from artifacts_io_handler import ArtifactsIOHandlerFactory
 from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
-from utils import getNumCores, nowTimestampStr, FIXED_SEED
+from utils import getNumCores, FIXED_SEED
 from sklearn_pipelines import SKLearnPipelineMaker
-from artifacts_io_handler import ArtifactsIOHandlerFactory
 
 logger = logging.getLogger(__name__)
     
@@ -37,6 +34,7 @@ class Trainer(EnforceOverrides):
     self.params = params.copy()
     self.dataReader = DataReaderFactory.make(params)
     self.dataProcessor = DataProcessor(params)
+    self.artifactsIOHandler = ArtifactsIOHandlerFactory.make(params)
     
     self.inputColTypes = None
     self.valPerformanceMetrics = None
@@ -214,14 +212,7 @@ class TorchTrainer(Trainer):
 
   @overrides
   def saveModel(self) -> None:
-    pytorchArtifactsDir = pathlib.Path('artifacts/pytorch/')
-    modelName = self.params['pytorch_model']
-    thisModelDir = pytorchArtifactsDir/modelName
-    
-    if modelName not in pathlib.os.listdir(pytorchArtifactsDir):
-      pathlib.os.mkdir(thisModelDir)
-    
-    modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.pt'
+
     artifacts = {
       'target': self.params['target'],
       'val_range': self.params['val_range'],
@@ -230,8 +221,7 @@ class TorchTrainer(Trainer):
       'optimizer_state_dict': self.optimizer.state_dict(),
       'val_perf_metrics': self.valPerformanceMetrics
     }
-    torch.save(artifacts, modelPath)
-    logger.info(f'Saving model artifacts to {modelPath}')
+    self.artifactsIOHandler.saveTorch(artifacts)
 
   @overrides
   def deployModel(self):
@@ -248,49 +238,9 @@ class TorchTrainer(Trainer):
     return modelClass(featureNames)
   
   def _loadStateDicts(self) -> None:
-    pytorchArtifactsDir = pathlib.Path('artifacts/pytorch/')
     
-    if self.params['load_latest_state_dict']:
-      
-      if (
-        (modelName := self.params['pytorch_model'])
-        not in (pytorchArtifactsDirContents := pathlib.os.listdir(pytorchArtifactsDir))
-      ):
-        logger.warning(f'No previous state dicts found for {modelName=}')
-        return
-      
-      else:
-        artifacts = [
-          a for a in pathlib.os.listdir(pytorchArtifactsDir/modelName)
-          if a.startswith(modelName)
-        ]
-        
-        if len(artifacts) == 0:
-          logger.warning(f'No previous state dicts found for {modelName=}')
-          return
-        else:
-          artifacts.sort(reverse=True)
-        
-    elif (targetModel := self.params['load_state_dict']) is not None:
-      artifacts = [
-        a for a in pathlib.os.listdir(pytorchArtifactsDir/modelName)
-        if (
-          re.sub('\.pt|\.pth', '', targetModel) 
-          == re.sub('\.pt|\.pth', '', a)
-        )
-      ]
-      assert len(artifacts) > 0, f'{targetModel=} not found'
-      assert len(artifacts) < 2, f'multiple artifacts found for {targetModel=}'
-      
-    else:
-      raise Exception(
-        'Invalid combination of load_latest_state_dict and load_state_dict args'
-      )
-      
-    artifactsPath = pytorchArtifactsDir/modelName/artifacts[0]
-    logger.info(f'Loading model and optimizer state dicts from {artifactsPath}')
+    checkpoint = self.artifactsIOHandler.loadTorch()
     
-    checkpoint = torch.load(artifactsPath)
     self._validateInputColumns(checkpoint['input_col_types'])
     self.model.load_state_dict(checkpoint['model_state_dict'])
     self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

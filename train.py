@@ -26,7 +26,4 @@ if __name__ == '__main__':
   trainer.train()
   trainer.saveModel()
   
-  if params.deploy:
-    trainer.deployModel()
-
   logger.info('Analysis complete')

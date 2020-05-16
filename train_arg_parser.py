@@ -76,7 +76,11 @@ class TrainArgParser:
       '--num_workers', type=int, default=-1, 
       help='-1: Use all but one core for training. (Default: -1)'
     )
-    self.parser.add_argument('--deploy', action='store_true')
+    self.parser.add_argument(
+      '--artifacts_env', type=str, help=(
+        "Artifacts location. Either 'local' or 's3'."
+      )
+    )
     self.parser.add_argument(
       '--run_id', type=str, 
       help=(
@@ -152,3 +156,5 @@ class TrainArgParser:
     assert not (args.load_latest_state_dict and args.load_state_dict)
     # only pass eval_metric and n_iter for sklearn models
     assert bool(args.sklearn_model) is bool(args.eval_metric) is bool(args.n_iter)
+    # artifacts location
+    assert args.artifacts_env in ['local', 's3']
