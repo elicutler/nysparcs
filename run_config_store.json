@@ -1,0 +1,77 @@
+
+{
+  "torch_test_local": {
+    "target": "prior_auth_dispo",
+    "target_type": "binary",
+    "features": [
+      "hospital_county",
+      "age_group",
+      "gender",
+      "race",
+      "type_of_admission",
+      "ccs_diagnosis",
+      "ccs_procedure",
+      "source_of_payment_1",
+      "source_of_payment_2",
+      "emergency_department_indicator",
+      "total_charges"
+    ],
+    "cat_encoder_strat": "one_hot",
+    "pytorch_model": "CatEmbedNet",
+    "load_latest_state_dict": true,
+    "local_data_path": "data/Hospital_Inpatient_Discharges__SPARCS_De-Identified___2009.csv",
+    "epochs": 2,
+    "batch_size": 100,
+    "train_range": [100, 5000],
+    "val_range": [5001, 6000]
+  },
+  "torch_test_cloud": {
+    "target": "prior_auth_dispo",
+    "target_type": "binary",
+    "features": [
+      "hospital_county",
+      "age_group",
+      "gender",
+      "race",
+      "type_of_admission",
+      "ccs_diagnosis",
+      "ccs_procedure",
+      "source_of_payment_1",
+      "source_of_payment_2",
+      "emergency_department_indicator",
+      "total_charges"
+    ],
+    "cat_encoder_strat": "one_hot",
+    "pytorch_model": "CatEmbedNet",
+    "load_latest_state_dict": true,
+    "socrata_data_key": "q6hk-esrj",
+    "epochs": 2,
+    "batch_size": 100,
+    "train_range": [100, 1099],
+    "val_range": [1100, 1999]
+  },
+  "sklearn_test_local": {
+    "target": "prior_auth_dispo",
+    "target_type": "binary",
+    "features": [
+      "hospital_county",
+      "age_group",
+      "gender",
+      "race",
+      "type_of_admission",
+      "ccs_diagnosis",
+      "ccs_procedure",
+      "source_of_payment_1",
+      "source_of_payment_2",
+      "emergency_department_indicator",
+      "total_charges"
+    ],
+    "cat_encoder_strat": "target",
+    "sklearn_model": "gradient_boosting_classifier",
+    "local_data_path": "data/Hospital_Inpatient_Discharges__SPARCS_De-Identified___2009.csv",
+    "eval_metric": "roc_auc",
+    "n_iter": 2,
+    "train_range": [100, 5000],
+    "val_range": [5001, 6000]
+  }
+}
