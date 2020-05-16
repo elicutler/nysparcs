@@ -97,6 +97,40 @@ class SocrataDataReader(DataReader):
     with open('config/secrets.json', 'r') as f:
       appToken = json.load(f)['socrata']['app_token']
     return Socrata('health.data.ny.gov', appToken)
+  
+  
+class S3DataReader(DataReader):
+  
+  def __init__(self, params):
+    super().__init__(params)
+    
+#   @overrides
+#   def read(self) -> pd.DataFrame:
+#     logger.info('Reading data from local path...')
+    
+#     trainStart, trainEnd = self.params['train_range']
+#     trainDF = self._readNumRowsFromStartRow(
+#       trainStart, trainEnd-trainStart
+#     )
+#     trainDF['train_val'] = 'train'
+    
+#     valStart, valEnd = self.params['val_range']
+#     valDF = self._readNumRowsFromStartRow(
+#       valStart, valEnd-valStart
+#     )
+#     valDF['train_val'] = 'val'
+    
+#     df = trainDF.append(valDF)
+#     return df
+
+#   @overrides
+#   def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
+#     colNames = pd.read_csv(self.params['local_data_path'], nrows=0).columns
+#     df = pd.read_csv(
+#       self.params['local_data_path'], skiprows=startRow-1, nrows=numRows,
+#       header=None, names=colNames
+#     )
+#     return df
                 
 
 class DataReaderFactory:
@@ -111,6 +145,9 @@ class DataReaderFactory:
       
     elif dataLoc == 'socrata':
       dataReader = SocrataDataReader
+      
+    elif dataLoc == 's3':
+      dataReader = S3DataReaderi
       
     else:
       raise ValueError(f'{dataLoc=} not recognized')

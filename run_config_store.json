@@ -1,6 +1,6 @@
 
 {
-  "torch_test_local_data_local_artifacts": {
+  "test_torch_local_data_local_artifacts": {
     "target": "prior_auth_dispo",
     "target_type": "binary",
     "features": [
@@ -26,7 +26,7 @@
     "val_range": [5001, 6000],
     "artifacts_env": "local"
   },
-  "torch_test_cloud_data_local_artifacts": {
+  "test_torch_cloud_data_local_artifacts": {
     "target": "prior_auth_dispo",
     "target_type": "binary",
     "features": [
@@ -52,7 +52,7 @@
     "val_range": [1100, 1999],
     "artifacts_env": "local"
   },
-  "sklearn_test_local_data_local_artifacts": {
+  "test_sklearn_local_data_local_artifacts": {
     "target": "prior_auth_dispo",
     "target_type": "binary",
     "features": [
