@@ -21,6 +21,10 @@ else
     echo "Warning: No miniconda or anaconda installation found"
 fi
 . ~/.bashrc
-# conda init bash
+
 conda env create -f environment.yaml
 conda activate nysparcs
+
+# set git user
+git config --global user.name 'Eli Cutler'
+git config --global user.email cutler.eli@gmail.com
