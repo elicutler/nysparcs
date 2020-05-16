@@ -9,7 +9,18 @@ cp -a @jupyterlab ~/.jupyter/lab/user-settings
 cp .vimrc ~/.vimrc
 
 # build and activate conda environment
-source ~/miniconda3/etc/profile.d/conda.sh
-conda init bash
+if [ -d ~/miniconda3 ]
+then
+    . ~/miniconda3/etc/profile.d/conda.sh
+    echo "Initializing miniconda"
+elif [ -d ~/anaconda3 ]
+then
+    . ~/anaconda3/etc/profile.d/conda.sh
+    echo "Initializing anaconda"
+else
+    echo "Warning: No miniconda or anaconda installation found"
+fi
+. ~/.bashrc
+# conda init bash
 conda env create -f environment.yaml
 conda activate nysparcs
