@@ -22,6 +22,8 @@ if __name__ == '__main__':
 #   params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'torch_test_cloud']))
 #   params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'sklearn_test_local']))
   
+  logger.info(f'params:\n{params}')
+  
   trainer = TrainerFactory.make(params)
   trainer.train()
   trainer.saveModel()

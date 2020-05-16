@@ -239,11 +239,14 @@ class TorchTrainer(Trainer):
   
   def _loadStateDicts(self) -> None:
     
-    checkpoint = self.artifactsIOHandler.loadTorch()
+    if (checkpoint := self.artifactsIOHandler.loadTorch()) is not None:
     
-    self._validateInputColumns(checkpoint['input_col_types'])
-    self.model.load_state_dict(checkpoint['model_state_dict'])
-    self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+      self._validateInputColumns(checkpoint['input_col_types'])
+      self.model.load_state_dict(checkpoint['model_state_dict'])
+      self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+      
+    else:
+      logger.warning('No state dict loaded')
       
   def _makeLossCriterion(self) -> None:
     
@@ -260,12 +263,12 @@ class TorchTrainer(Trainer):
   
   def _validateInputColumns(self, loadedInputColTypes) -> None:
     assert (self.inputColTypes.index == loadedInputColTypes.index).all(), (
-      f'Input column names do not match:\n{self.inputColTypes.columns=}'
-      f'\n{loadedInputColTypes.columns=}'
+      f'Input column names do not match:\n{self.inputColTypes=}'
+      f'\n{loadedInputColTypes=}'
     )
     assert (self.inputColTypes.values == loadedInputColTypes.values).all(), (
-      f'Input column data types do not match:\n{self.inputColTypes.columns}'
-      '\n{loadedInputColTypes.columns=}'
+      f'Input column data types do not match:\n{self.inputColTypes=}'
+      f'\n{loadedInputColTypes=}'
     )
     
     
