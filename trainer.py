@@ -25,6 +25,7 @@ from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
 from utils import getNumCores, nowTimestampStr, FIXED_SEED
 from sklearn_pipelines import SKLearnPipelineMaker
+from artifacts_io_handler import ArtifactsIOHandlerFactory
 
 logger = logging.getLogger(__name__)
     
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 class Trainer(EnforceOverrides):
   
   @abstractmethod
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     self.params = params.copy()
     self.dataReader = DataReaderFactory.make(params)
     self.dataProcessor = DataProcessor(params)
@@ -94,7 +95,7 @@ class Trainer(EnforceOverrides):
 class TorchTrainer(Trainer):
 
   @overrides
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     super().__init__(params)
     self.sklearnProcessor = SKLearnProcessor(params)
     self.model = None
@@ -320,7 +321,7 @@ class TorchTrainer(Trainer):
     
 class SKLearnTrainer(Trainer):
   
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     super().__init__(params)
     self.sklearnPipelineMaker = SKLearnPipelineMaker(params)
     

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class DataProcessor:
   
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     self.params = params.copy()
     
     self.df = None

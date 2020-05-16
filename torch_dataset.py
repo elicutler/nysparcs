@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class TorchDataset(Dataset):
   
-  def __init__(self, params, inDF, sklearnProcessor) -> None:
+  def __init__(self, params, inDF, sklearnProcessor):
     self.params = params.copy()
     self.df = inDF.copy()
     self.sklearnProcessor = sklearnProcessor

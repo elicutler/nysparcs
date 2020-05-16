@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class TrainArgParser:
   
-  def __init__(self) -> None:
+  def __init__(self):
     self.parser = argparse.ArgumentParser()
     
     self.parser.add_argument('--target', type=str)

@@ -13,7 +13,7 @@ class EvalNoGrad:
   were previously set.
   '''
   
-  def __init__(self, model) -> None:
+  def __init__(self, model):
     self.model = model # models are passed by reference
     self.prevModeTrain = self.model.training
     self.prevGradEnabled = torch.is_grad_enabled()

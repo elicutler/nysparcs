@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
     
 class SKLearnProcessor:
   
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     self.params = params.copy()
     
     self.trainDF = None

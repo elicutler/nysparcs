@@ -32,7 +32,7 @@ class TargetEncoder(BaseEstimator, TransformerMixin):
   def __init__(
     self, priorSize: T.Optional[int]=None, 
     priorFrac: T.Optional[float]=None
-  ) -> None:
+  ):
     assert not (priorSize is not None and priorFrac is not None)
     
     self.priorSize = priorSize

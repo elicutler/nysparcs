@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class DataReader(EnforceOverrides):
   
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     self.params = params.copy()
   
   @abstractmethod
@@ -27,7 +27,7 @@ class DataReader(EnforceOverrides):
 
 class LocalDataReader(DataReader):
   
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     super().__init__(params)
     
   @overrides
@@ -61,7 +61,7 @@ class LocalDataReader(DataReader):
 
 class SocrataDataReader(DataReader):
   
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     super().__init__(params)
     self.socrataConn = self._establishSocrataConn()
     

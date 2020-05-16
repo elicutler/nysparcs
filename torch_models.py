@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class CatEmbedNet(nn.Module):
   
-  def __init__(self, featureNames) -> None:
+  def __init__(self, featureNames):
     super().__init__()
     self.featureNames = featureNames
     self.catFeatureIndexRangeMap = self._makeCatFeatureIndexRangeMap()
