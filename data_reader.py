@@ -26,7 +26,7 @@ class DataReader(EnforceOverrides):
     pass
   
 
-class LocalorS3DataReader(DataReader):
+class LocalOrS3DataReader(DataReader):
   
   def __init__(self, params):
     super().__init__(params)
@@ -129,7 +129,7 @@ class DataReaderFactory:
       raise Error('data location cannot be inferred from params')
       
     if dataLoc in ['local', 's3']:
-      dataReader = LocalorS3DataReader
+      dataReader = LocalOrS3DataReader
       
     elif dataLoc == 'socrata':
       dataReader = SocrataDataReader

@@ -46,11 +46,7 @@ class Trainer(EnforceOverrides):
   @abstractmethod
   def saveModel(self):
     pass
-  
-  @abstractmethod
-  def deployModel(self):
-    pass
-  
+
   @final
   def _calcPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
     
@@ -223,10 +219,6 @@ class TorchTrainer(Trainer):
     }
     self.artifactsIOHandler.saveTorch(artifacts)
 
-  @overrides
-  def deployModel(self):
-    pass
-  
   def _loadModel(self, featureNames) -> T.Type[nn.Module]:
     
     if (modelName := self.params['pytorch_model']) == 'CatEmbedNet':
@@ -314,22 +306,7 @@ class SKLearnTrainer(Trainer):
       'pipeline': self.pipeline,
       'val_perf_metrics': self.valPerformanceMetrics
     }
-    sklearnArtifactsDir = pathlib.Path('artifacts/sklearn')
-    modelName = self.params['sklearn_model']
-    thisModelDir = sklearnArtifactsDir/modelName
-    
-    if modelName not in pathlib.os.listdir(sklearnArtifactsDir):
-      pathlib.os.mkdir(thisModelDir)
-      
-    modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.sk'
-    with open(modelPath, 'wb') as file:
-      pickle.dump(artifacts, file, protocol=5)
-      
-    logger.info(f'Saving model artifacts to {modelPath}')
-    
-  @overrides
-  def deployModel(self) -> None:
-    pass
+    self.artifactsIOHandler.saveSKLearn(artifacts)
   
   def _splitXY(self, inDF) -> T.Tuple[pd.DataFrame, pd.Series]:
     target = self.params['target']

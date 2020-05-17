@@ -44,7 +44,6 @@ class LocalArtifactsIOHandler(ArtifactsIOHandler):
     
     artifactsDir = pathlib.Path('artifacts/pytorch/')
     modelName = self.params['pytorch_model']
-
     thisModelDir = artifactsDir/modelName
     
     if modelName not in pathlib.os.listdir(artifactsDir):
@@ -104,7 +103,20 @@ class LocalArtifactsIOHandler(ArtifactsIOHandler):
     
   @overrides
   def saveSKLearn(self, artifacts) -> None:
-    pass
+
+    artifactsDir = pathlib.Path('artifacts/sklearn')
+    modelName = self.params['sklearn_model']
+    thisModelDir = artifactsDir/modelName
+    
+    if modelName not in pathlib.os.listdir(artifactsDir):
+      pathlib.os.mkdir(thisModelDir)
+      
+    modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.sk'
+    with open(modelPath, 'wb') as file:
+      pickle.dump(artifacts, file, protocol=5)
+      
+    logger.info(f'Saving model artifacts to {modelPath}')
+    
 
 
 class S3ArtifactsIOHandler(ArtifactsIOHandler):
