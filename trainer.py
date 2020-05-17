@@ -21,7 +21,8 @@ from sklearn_processor import SKLearnProcessor
 from artifacts_io_handler import ArtifactsIOHandlerFactory
 from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
-from utils import getNumCores, FIXED_SEED
+from utils import getNumCores
+from constants import FIXED_SEED
 from sklearn_pipelines import SKLearnPipelineMaker
 
 logger = logging.getLogger(__name__)

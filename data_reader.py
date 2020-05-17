@@ -8,6 +8,7 @@ from pathlib import Path
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from sodapy import Socrata
+from constants import S3_BUCKET
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ class LocalOrS3DataReader(DataReader):
       self.dataPath = Path(params['local_data_path'])
     
     elif self.dataLoc == 's3':
-      s3Prefix = Path('s3://sagemaker-us-west-2-207070896583/nysparcs/')
+      s3Prefix = Path(f's3://{S3_BUCKET}/nysparcs/')
       self.dataPath = s3Prefix/params['s3_data_path']
     
   @overrides

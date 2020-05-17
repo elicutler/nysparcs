@@ -21,15 +21,15 @@ class ArtifactsIOHandler(EnforceOverrides):
     self.params = params.copy()
     
   @abstractmethod
-  def saveTorch(self, artifacts, artifactsDir, modelName) -> None:
+  def saveTorch(self, artifacts) -> None:
     raise NotImplementedError
     
   @abstractmethod
-  def loadTorch(self):
+  def loadTorch(self) -> OrderedDict:
     raise NotImplementedError
     
   @abstractmethod
-  def saveSKLearn(self):
+  def saveSKLearn(self, artifacts) -> None:
     raise NotImplementedError
 
 
@@ -120,8 +120,34 @@ class LocalArtifactsIOHandler(ArtifactsIOHandler):
 
 
 class S3ArtifactsIOHandler(ArtifactsIOHandler):
-  pass
+  
+  @overrides
+  def __init__(self, params):
+    self.params = params.copy()
+    
+  @overrides
+  def saveTorch(self, artifacts) -> None:
+    
+#     artifactsDir = pathlib.Path('artifacts/pytorch/')
+#     modelName = self.params['pytorch_model']
+#     thisModelDir = artifactsDir/modelName
+    
+#     if not pathlib.os.path.exists(thisModelDir):
+#       pathlib.os.makedirs(thisModelDir, exist_ok=True)
+    
+#     modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.pt'
 
+#     torch.save(artifacts, modelPath)
+#     logger.info(f'Saving model artifacts to {modelPath}')
+    
+  @overrides
+  def loadTorch(self) -> OrderedDict:
+    pass
+    
+  @overrides
+  def saveSKLearn(self, artifacts) -> None:
+    pass
+    
 
 class ArtifactsIOHandlerFactory:
   
