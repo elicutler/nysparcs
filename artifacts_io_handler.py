@@ -46,8 +46,8 @@ class LocalArtifactsIOHandler(ArtifactsIOHandler):
     modelName = self.params['pytorch_model']
     thisModelDir = artifactsDir/modelName
     
-    if modelName not in pathlib.os.listdir(artifactsDir):
-      pathlib.os.mkdir(thisModelDir)
+    if not pathlib.os.path.exists(thisModelDir):
+      pathlib.os.makedirs(thisModelDir, exist_ok=True)
     
     modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.pt'
 
@@ -108,8 +108,8 @@ class LocalArtifactsIOHandler(ArtifactsIOHandler):
     modelName = self.params['sklearn_model']
     thisModelDir = artifactsDir/modelName
     
-    if modelName not in pathlib.os.listdir(artifactsDir):
-      pathlib.os.mkdir(thisModelDir)
+    if not pathlib.os.path.exists(thisModelDir):
+      pathlib.os.makedirs(thisModelDir, exist_ok=True)
       
     modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.sk'
     with open(modelPath, 'wb') as file:
