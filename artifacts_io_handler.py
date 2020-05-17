@@ -210,7 +210,11 @@ class S3ArtifactsIOHandler(ArtifactsIOHandler):
     
   @overrides
   def saveSKLearn(self, artifacts) -> None:
-    pass
+    modelPath = self._localSaveSKLearn(artifacts, returnModelPath=True)
+    
+    s3Path = self.s3ProjectRootPath + str(modelPath.parent)
+    S3Uploader.upload(str(modelPath), s3Path)
+    logger.info(f'Uploading model to s3: {s3Path}/{modelPath.stem}{modelPath.suffix}')
 
 class ArtifactsIOHandlerFactory:
   
