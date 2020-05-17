@@ -214,7 +214,7 @@ class TorchTrainer(Trainer):
       'target': self.params['target'],
       'val_range': self.params['val_range'],
       'input_col_types': self.inputColTypes,
-      'sklearn_processor': sklearnProcessor,
+      'sklearn_processor': self.sklearnProcessor.get(),
       'model_state_dict': self.model.state_dict(),
       'optimizer_state_dict': self.optimizer.state_dict(),
       'val_perf_metrics': self.valPerformanceMetrics
@@ -234,7 +234,7 @@ class TorchTrainer(Trainer):
   def _loadStateDicts(self) -> None:
     
     if (checkpoint := self.artifactsIOHandler.loadTorch()) is not None:
-    
+      
       self._validateInputColumns(checkpoint['input_col_types'])
       self.model.load_state_dict(checkpoint['model_state_dict'])
       self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
