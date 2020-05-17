@@ -114,10 +114,11 @@ class TorchTrainer(Trainer):
     torchValDF = TorchDataset(self.params, valDF, sklearnProcessor)
     
     batchSize = self.params['batch_size']
-#     numWorkers = (
-#       getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
-#     )
-    numWorkers = 0 # DataLoader error with multiprocessing
+    numWorkers = (
+      getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
+    )
+    logger.info(f'Running on {numWorkers} cores')
+    
     trainLoader = DataLoader(
       torchTrainDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
     )
@@ -213,6 +214,7 @@ class TorchTrainer(Trainer):
       'target': self.params['target'],
       'val_range': self.params['val_range'],
       'input_col_types': self.inputColTypes,
+      'sklearn_processor': sklearnProcessor,
       'model_state_dict': self.model.state_dict(),
       'optimizer_state_dict': self.optimizer.state_dict(),
       'val_perf_metrics': self.valPerformanceMetrics
