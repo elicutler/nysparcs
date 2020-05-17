@@ -20,9 +20,10 @@ then
 else
     echo "Warning: No miniconda or anaconda installation found"
 fi
-. ~/.bashrc
 
 conda env create -f environment.yaml
+echo ". /home/ec2-user/anaconda3/etc/profile.d/conda.sh" >> ~/.bashrc
+. ~/.bashrc
 conda activate nysparcs
 
 # set git user
