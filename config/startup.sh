@@ -21,7 +21,7 @@ else
     echo "Warning: No miniconda or anaconda installation found"
 fi
 
-conda env create -f environment.yaml
+conda env create --force --file environment.yaml
 echo ". /home/ec2-user/anaconda3/etc/profile.d/conda.sh" >> ~/.bashrc
 . ~/.bashrc
 conda activate nysparcs
