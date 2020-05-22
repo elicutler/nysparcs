@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
   
-  logger.info('Starting analysis')
+  logger.info('Begin training...')
 
   parser = TrainArgParser()
   params = SafeDict.fromNamespace(parser.parseArgs())
@@ -28,4 +28,4 @@ if __name__ == '__main__':
   trainer.train()
   trainer.saveModel()
   
-  logger.info('Analysis complete')
+  logger.info('Training complete')
