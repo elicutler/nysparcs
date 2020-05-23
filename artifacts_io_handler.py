@@ -10,6 +10,7 @@ from collections import OrderedDict
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from sagemaker.s3 import S3Uploader, S3Downloader
+from botocore.exceptions import ClientError
 from utils import nowTimestampStr
 from constants import S3_BUCKET
 
@@ -216,6 +217,21 @@ class S3ArtifactsIOHandler(ArtifactsIOHandler):
     S3Uploader.upload(str(modelPath), s3Path)
     logger.info(f'Uploading model to s3: {s3Path}/{modelPath.stem}{modelPath.suffix}')
 
+  def getAllModelArtifacts(self) -> T.List[str]:
+    
+    modelArtifacts = []
+    def listAllArtifactPaths(path) -> None:
+      for item in S3Downloader.list(path):
+        if re.findall('\.pt$|\.sk$', item):
+          modelArtifacts.append(item)
+        else:
+          listAllArtifactPaths(item)
+    
+    rootPath = self.s3ProjectRootPath + 'artifacts'
+    listAllArtifactPaths(rootPath)
+    
+    return modelArtifacts
+    
 class ArtifactsIOHandlerFactory:
   
   @staticmethod
