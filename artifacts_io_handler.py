@@ -219,18 +219,30 @@ class S3ArtifactsIOHandler(ArtifactsIOHandler):
 
   def getAllModelArtifacts(self) -> T.List[str]:
     
-    modelArtifacts = []
-    def listAllArtifactPaths(path) -> None:
+    def listAllArtifactPaths(path, list_) -> None:
       for item in S3Downloader.list(path):
         if re.findall('\.pt$|\.sk$', item):
-          modelArtifacts.append(item)
+          list_.append(item)
         else:
           listAllArtifactPaths(item)
     
     rootPath = self.s3ProjectRootPath + 'artifacts'
-    listAllArtifactPaths(rootPath)
+    modelArtifacts = []
+    listAllArtifactPaths(rootPath, modelArtifacts)
     
     return modelArtifacts
+  
+  def downloadModelsFromList(self, modelsList) -> None:
+    for m in modelsList:
+      if m.endswith('.pt'):
+        localDir = (
+          pathlib.Path('artifacts/pytorch')/pathlib.Path(m).parent.stem
+        )
+      elif m.endswith('.sk'):
+        localDir = (
+          pathlib.Path('artifacts/sklearn')/pathlib.Path(m).parent.stem
+        )
+      S3Downloader.download(m, localDir)
     
 class ArtifactsIOHandlerFactory:
   
