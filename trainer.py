@@ -132,12 +132,6 @@ class TorchTrainer(Trainer):
     
     self.model = self._loadModel(sklearnProcessor.featureNames).to(device)
     self.optimizer = optim.Adam(self.model.parameters())
-    
-    if (
-      self.params['load_latest_state_dict'] 
-      or self.params['load_state_dict'] is not None
-    ):
-      self._loadStateDicts()
       
     lossCriterion = self._makeLossCriterion()
     
@@ -212,7 +206,8 @@ class TorchTrainer(Trainer):
   def saveModel(self) -> None:
 
     meta = {
-      'model_type': 'torch',
+      'model_type': 'pytorch',
+      'model_name': self.params['pytorch_model'],
       'target': self.params['target'],
       'val_range': self.params['val_range'],
       'val_perf_metrics': self.valPerformanceMetrics,
@@ -236,16 +231,16 @@ class TorchTrainer(Trainer):
       
     return modelClass(featureNames)
   
-  def _loadStateDicts(self) -> None:
+#   def _loadStateDicts(self) -> None:
     
-    if (checkpoint := self.artifactsIOHandler.loadTorch()) is not None:
+#     if (checkpoint := self.artifactsIOHandler.loadTorch()) is not None:
       
-      self._validateInputColumns(checkpoint['input_col_types'])
-      self.model.load_state_dict(checkpoint['model_state_dict'])
-      self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+#       self._validateInputColumns(checkpoint['input_col_types'])
+#       self.model.load_state_dict(checkpoint['model_state_dict'])
+#       self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
       
-    else:
-      logger.warning('No state dict loaded')
+#     else:
+#       logger.warning('No state dict loaded')
       
   def _makeLossCriterion(self) -> None:
     
@@ -260,15 +255,15 @@ class TorchTrainer(Trainer):
       
     return lossType(reduction='sum')
   
-  def _validateInputColumns(self, loadedInputColTypes) -> None:
-    assert (self.inputColTypes.index == loadedInputColTypes.index).all(), (
-      f'Input column names do not match:\n{self.inputColTypes=}'
-      f'\n{loadedInputColTypes=}'
-    )
-    assert (self.inputColTypes.values == loadedInputColTypes.values).all(), (
-      f'Input column data types do not match:\n{self.inputColTypes=}'
-      f'\n{loadedInputColTypes=}'
-    )
+#   def _validateInputColumns(self, loadedInputColTypes) -> None:
+#     assert (self.inputColTypes.index == loadedInputColTypes.index).all(), (
+#       f'Input column names do not match:\n{self.inputColTypes=}'
+#       f'\n{loadedInputColTypes=}'
+#     )
+#     assert (self.inputColTypes.values == loadedInputColTypes.values).all(), (
+#       f'Input column data types do not match:\n{self.inputColTypes=}'
+#       f'\n{loadedInputColTypes=}'
+#     )
     
     
 class SKLearnTrainer(Trainer):
@@ -306,14 +301,19 @@ class SKLearnTrainer(Trainer):
     
   @overrides 
   def saveModel(self) -> None:
-    artifacts = {
+    meta = {
+      'model_type': 'sklearn',
+      'model_name': self.params['sklearn_model'],
       'target': self.params['target'],
       'val_range': self.params['val_range'],
       'input_col_types': self.inputColTypes,
-      'pipeline': self.pipeline,
       'val_perf_metrics': self.valPerformanceMetrics
     }
-    self.artifactsIOHandler.saveSKLearn(artifacts)
+    artifacts = {
+      'model_pipeline': self.pipeline
+    }
+    message = self.artifactsIOHandler.Message(meta, artifacts)
+    self.artifactsIOHandler.save(message)
   
   def _splitXY(self, inDF) -> T.Tuple[pd.DataFrame, pd.Series]:
     target = self.params['target']

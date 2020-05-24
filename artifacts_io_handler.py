@@ -21,62 +21,78 @@ class ArtifactsIOHandler(EnforceOverrides):
   
   Message = namedtuple('Message', ['meta', 'artifacts'])
   
-  @abstractmethod
+  localRootPath = 'nysparcs/artifacts/'
+  s3RootPath = f's3://{S3_BUCKET}/' + localRootPath
+  
   def __init__(self, params):
     self.params = params.copy()
     
-  @abstractmethod
-  def saveTorch(self, artifacts) -> None:
-    raise NotImplementedError
+  def save(self, message) -> None:
+    modelPath = self._saveToLocal(message)
+    self._saveToS3(message)
     
-  @abstractmethod
-  def loadTorch(self) -> OrderedDict:
-    raise NotImplementedError
+  def _saveToLocal(self, message) -> str:
+    '''
+    Save model locally and return path
+    '''
     
-  @abstractmethod
-  def saveSKLearn(self, artifacts) -> None:
-    raise NotImplementedError
+    modelType = message.meta['model_type']
+    modelName = message.meta['model_name']
+    parentPath = self.localRootPath + f'{modelType}/{modelName}/'
     
-  @final
-  def _localSaveTorch(
-    self, artifacts, returnModelPath=False
-  ) -> T.Union[None, pathlib.Path]:
-    
-    artifactsDir = pathlib.Path('artifacts/pytorch/')
-    modelName = self.params['pytorch_model']
-    thisModelDir = artifactsDir/modelName
-    
-    if not pathlib.os.path.exists(thisModelDir):
-      pathlib.os.makedirs(thisModelDir, exist_ok=True)
-    
-    modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.pt'
-
-    torch.save(artifacts, modelPath)
-    logger.info(f'Saving model artifacts to local path: {modelPath}')
-    
-    if returnModelPath:
-      return modelPath
-    
-  @final
-  def _localSaveSKLearn(
-    self, artifacts, returnModelPath=False
-  ) -> T.Union[None, pathlib.Path]:
-
-    artifactsDir = pathlib.Path('artifacts/sklearn')
-    modelName = self.params['sklearn_model']
-    thisModelDir = artifactsDir/modelName
-    
-    if not pathlib.os.path.exists(thisModelDir):
-      pathlib.os.makedirs(thisModelDir, exist_ok=True)
+    if not pathlib.os.path.exists(parentPath):
+      pathlib.os.makedirs(parentPath)
       
-    modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.sk'
-    with open(modelPath, 'wb') as file:
-      pickle.dump(artifacts, file, protocol=5)
+    if modelType == 'pytorch':
+      modelPath = parentPath + f'{modelName}_{nowTimestampStr()}.pt'
+      torch.save(message, modelPath)
       
-    logger.info(f'Saving model artifacts to local path: {modelPath}')
+    elif modelType == 'sklearn':
+      modelPath = parentPath + f'{modelName}_{nowTimestampStr()}.sk'
+      with open(modelPath, 'wb') as file:
+        pickle.dump(message, file, protocol=5)
+        
+    logger.info(f'Model artifact saved to local path: {modelPath}')
+    return modelPath
+#   def _localSaveTorch(
+#     self, artifacts, returnModelPath=False
+#   ) -> T.Union[None, pathlib.Path]:
+    
+#     artifactsDir = pathlib.Path('artifacts/pytorch/')
+#     modelName = self.params['pytorch_model']
+#     thisModelDir = artifactsDir/modelName
+    
+#     if not pathlib.os.path.exists(thisModelDir):
+#       pathlib.os.makedirs(thisModelDir, exist_ok=True)
+    
+#     modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.pt'
 
-    if returnModelPath:
-      return modelPath
+#     torch.save(artifacts, modelPath)
+#     logger.info(f'Saving model artifacts to local path: {modelPath}')
+    
+#     if returnModelPath:
+#       return modelPath
+    
+#   @final
+#   def _localSaveSKLearn(
+#     self, artifacts, returnModelPath=False
+#   ) -> T.Union[None, pathlib.Path]:
+
+#     artifactsDir = pathlib.Path('artifacts/sklearn')
+#     modelName = self.params['sklearn_model']
+#     thisModelDir = artifactsDir/modelName
+    
+#     if not pathlib.os.path.exists(thisModelDir):
+#       pathlib.os.makedirs(thisModelDir, exist_ok=True)
+      
+#     modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.sk'
+#     with open(modelPath, 'wb') as file:
+#       pickle.dump(artifacts, file, protocol=5)
+      
+#     logger.info(f'Saving model artifacts to local path: {modelPath}')
+
+#     if returnModelPath:
+#       return modelPath
     
   @final
   def _localLoadTorch(self, modelFile=None) -> OrderedDict:
@@ -126,27 +142,27 @@ class LocalArtifactsIOHandler(ArtifactsIOHandler):
   def __init__(self, params):
     super().__init__(params)
     
-  @overrides
+#   @overrides
   def saveTorch(self, artifacts) -> None:
     self._localSaveTorch(artifacts)
     
-  @overrides
+#   @overrides
   def loadTorch(self) -> OrderedDict:
     return self._localLoadTorch()
     
-  @overrides
+#   @overrides
   def saveSKLearn(self, artifacts) -> None:
     self._localSaveSKLearn(artifacts)    
 
 
 class S3ArtifactsIOHandler(ArtifactsIOHandler):
   
-  @overrides
+#   @overrides
   def __init__(self, params):
     self.params = params.copy()
     self.s3ProjectRootPath = f's3://{S3_BUCKET}/nysparcs/'
     
-  @overrides
+#   @overrides
   def saveTorch(self, artifacts) -> None:
     modelPath = self._localSaveTorch(artifacts, returnModelPath=True)
     
@@ -154,7 +170,7 @@ class S3ArtifactsIOHandler(ArtifactsIOHandler):
     S3Uploader.upload(str(modelPath), s3Path)
     logger.info(f'Uploading model to s3: {s3Path}/{modelPath.stem}{modelPath.suffix}')
     
-  @overrides
+#   @overrides
   def loadTorch(self) -> OrderedDict:
     
     # Note: cannot use pathlib.Path here because need to preserve consecutive 
@@ -211,7 +227,7 @@ class S3ArtifactsIOHandler(ArtifactsIOHandler):
     modelFile = pathlib.Path(artifactsPath).stem + pathlib.Path(artifactsPath).suffix
     return self._localLoadTorch(modelFile)
     
-  @overrides
+#   @overrides
   def saveSKLearn(self, artifacts) -> None:
     modelPath = self._localSaveSKLearn(artifacts, returnModelPath=True)
     
@@ -246,18 +262,18 @@ class S3ArtifactsIOHandler(ArtifactsIOHandler):
         )
       S3Downloader.download(m, localDir)
     
-class ArtifactsIOHandlerFactory:
+# class ArtifactsIOHandlerFactory:
   
-  @staticmethod
-  def make(params) -> T.Type[ArtifactsIOHandler]:
+#   @staticmethod
+#   def make(params) -> T.Type[ArtifactsIOHandler]:
     
-    if (artifactsEnv := params['artifacts_env']) == 'local':
-      artifactsIOHandler = LocalArtifactsIOHandler
+#     if (artifactsEnv := params['artifacts_env']) == 'local':
+#       artifactsIOHandler = LocalArtifactsIOHandler
       
-    elif artifactsEnv == 's3':
-      artifactsIOHandler = S3ArtifactsIOHandler
+#     elif artifactsEnv == 's3':
+#       artifactsIOHandler = S3ArtifactsIOHandler
       
-    else:
-      raise ValueError(f'{artifactsEnv} not recognized')
+#     else:
+#       raise ValueError(f'{artifactsEnv} not recognized')
       
-    return artifactsIOHandler(params)
+#     return artifactsIOHandler(params)
