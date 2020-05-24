@@ -18,7 +18,7 @@ from sklearn.metrics import mean_absolute_error, median_absolute_error
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
-from artifacts_io_handler import ArtifactsIOHandler
+from artifacts_io_handler import ArtifactsIOHandler, ArtifactsMessage
 from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
 from utils import getNumCores
@@ -218,7 +218,7 @@ class TorchTrainer(Trainer):
       'model_state_dict': self.model.state_dict(),
       'optimizer_state_dict': self.optimizer.state_dict(),
     }
-    message = self.artifactsIOHandler.Message(meta, artifacts)
+    message = ArtifactsMessage(meta, artifacts)
     self.artifactsIOHandler.save(message)
 
   def _loadModel(self, featureNames) -> T.Type[nn.Module]:

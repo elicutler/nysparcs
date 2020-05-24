@@ -17,27 +17,30 @@ from constants import S3_BUCKET
 logger = logging.getLogger(__name__)
 
 
+# Note: creating Message outside of ArtifactsIOHandler def, instead of as static variable
+# within class, because otherwise it cannot be pickled 
+ArtifactsMessage = namedtuple('ArtifactsMessage', ['meta', 'artifacts'])
+
+
 class ArtifactsIOHandler(EnforceOverrides):
   
-  Message = namedtuple('Message', ['meta', 'artifacts'])
-  
   localRootPath = 'nysparcs/artifacts/'
-  s3RootPath = f's3://{S3_BUCKET}/' + localRootPath
+  s3BucketPath = f's3://{S3_BUCKET}/'
   
   def __init__(self, params):
     self.params = params.copy()
     
-  def save(self, message) -> None:
-    modelPath = self._saveToLocal(message)
-    self._saveToS3(message)
+  def save(self, artifactsMessage) -> None:
+    modelPath = self._saveToLocal(artifactsMessage)
+    self._saveToS3(modelPath)
     
-  def _saveToLocal(self, message) -> str:
+  def _saveToLocal(self, artifactsMessage) -> str:
     '''
     Save model locally and return path
     '''
     
-    modelType = message.meta['model_type']
-    modelName = message.meta['model_name']
+    modelType = artifactsMessage.meta['model_type']
+    modelName = artifactsMessage.meta['model_name']
     parentPath = self.localRootPath + f'{modelType}/{modelName}/'
     
     if not pathlib.os.path.exists(parentPath):
@@ -45,15 +48,25 @@ class ArtifactsIOHandler(EnforceOverrides):
       
     if modelType == 'pytorch':
       modelPath = parentPath + f'{modelName}_{nowTimestampStr()}.pt'
-      torch.save(message, modelPath)
+      torch.save(artifactsMessage, modelPath)
       
     elif modelType == 'sklearn':
       modelPath = parentPath + f'{modelName}_{nowTimestampStr()}.sk'
       with open(modelPath, 'wb') as file:
-        pickle.dump(message, file, protocol=5)
+        pickle.dump(artifactsMessage, file, protocol=5)
         
-    logger.info(f'Model artifact saved to local path: {modelPath}')
+    logger.info(f'Model artifact saved to local file: {modelPath}')
     return modelPath
+  
+  def _saveToS3(self, modelPathStr) -> None:
+    modelPath = pathlib.Path(modelPathStr)
+    s3Path = self.s3BucketPath + str(modelPath.parent)
+    S3Uploader.upload(modelPathStr, s3Path)
+    logger.info(
+      'Model artifact saved to s3:'
+      f' {s3Path}/{modelPath.stem}{modelPath.suffix}'
+    )
+    
 #   def _localSaveTorch(
 #     self, artifacts, returnModelPath=False
 #   ) -> T.Union[None, pathlib.Path]:
