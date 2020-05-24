@@ -7,7 +7,7 @@ import re
 import torch
 import pickle
 
-from artifacts_io_handler import S3ArtifactsIOHandler
+from artifacts_io_handler import ArtifactsIOHandler
 
 logger = logging.getLogger(__name__)
 
@@ -16,29 +16,36 @@ class Deployer:
   
   def __init__(self, params):
     self.params = params.copy()
-    self.artifactsIOHandler = S3ArtifactsIOHandler(params)
+    self.artifactsIOHandler = ArtifactsIOHandler()
     
   def deploy(self) -> None:
     
-    allS3Models = self.artifactsIOHandler.getAllModelArtifacts()
-    self.artifactsIOHandler.downloadModelsFromList(allS3Models)
-    allLocalModels = self._getAllLocalModels()
-    inRangeModels = (
-      allLocalModels if (modelType := self.params['model_type']) is None
-      else self._keepModelsOfType(allLocalModels, 'pytorch')
-      if modelType == 'pytorch'
-      else self._keepModelsOfType(allLocalModels, 'sklearn')
-      if modelType == 'sklearn'
-      else None
+    self._deployModel(
+      self.params['model_name'] or self._getBestModel()
     )
-    assert inRangeModels is not None
     
-    fullModelPath = (
-      self._selectModelNameFromList(inRangeModels)
-      if self.params['model_name'] is not None
-      else self._selectBestModelNameFromList(inRangeModels)
-    )
-    breakpoint()
+  def _deployModel(self, modelName) -> None:
+    artifactsMessage = self.artifactsIOHandler.load(modelName)
+    
+#     allS3Models = self.artifactsIOHandler.getAllModelArtifacts()
+#     self.artifactsIOHandler.downloadModelsFromList(allS3Models)
+#     allLocalModels = self._getAllLocalModels()
+#     inRangeModels = (
+#       allLocalModels if (modelType := self.params['model_type']) is None
+#       else self._keepModelsOfType(allLocalModels, 'pytorch')
+#       if modelType == 'pytorch'
+#       else self._keepModelsOfType(allLocalModels, 'sklearn')
+#       if modelType == 'sklearn'
+#       else None
+#     )
+#     assert inRangeModels is not None
+    
+#     fullModelPath = (
+#       self._selectModelNameFromList(inRangeModels)
+#       if self.params['model_name'] is not None
+#       else self._selectBestModelNameFromList(inRangeModels)
+#     )
+#     breakpoint()
     
 #     modelName, modelArtifacts = (
 #       self.params['model_name'] 

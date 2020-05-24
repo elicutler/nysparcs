@@ -17,15 +17,9 @@ class DeployArgParser:
       )
     )
     self.parser.add_argument(
-      '--best_model', action='store_true', help=(
-        'Deploy model with best performance on validation set.'
-      )
-    )
-    self.parser.add_argument(
-      '--model_type', type=str, help=(
-        'If specified, must be either pytorch or sklearn.'
-        ' Required when selecting model by name,'
-        ' optional when selecting best_model.'
+      '--best_model_by_metric', type=str, help=(
+        'Deploy model with best performance on validation set'
+        ' based on specified metric.'
       )
     )
     
@@ -36,10 +30,10 @@ class DeployArgParser:
   
   def _validateArgs(self, args) -> None:
     
-    assert bool(args.model_name) + bool(args.best_model) == 1
+    assert (
+      bool(args.model_name) + bool(args.best_model_by_metric) == 1
+    )
     
-    if bool(args.model_name):
-      assert args.model_type in ['pytorch', 'sklearn']
-      
-    if bool(args.best_model):
-      assert args.model_type in [None, 'pytorch', 'sklearn']
+    assert args.best_model_by_metric in [
+      None, 'roc_auc', 'pr_auc', 'mae', 'mse'
+    ]

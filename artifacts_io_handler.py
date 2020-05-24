@@ -24,15 +24,19 @@ ArtifactsMessage = namedtuple('ArtifactsMessage', ['meta', 'artifacts'])
 
 class ArtifactsIOHandler(EnforceOverrides):
   
-  localRootPath = 'nysparcs/artifacts/'
+  localArtifactsPath = 'nysparcs/artifacts/'
   s3BucketPath = f's3://{S3_BUCKET}/'
+  s3ArtifactsPath = s3BucketPath + localArtifactsPath
   
-  def __init__(self, params):
-    self.params = params.copy()
-    
   def save(self, artifactsMessage) -> None:
-    modelPath = self._saveToLocal(artifactsMessage)
-    self._saveToS3(modelPath)
+    modelPathLocal = self._saveToLocal(artifactsMessage)
+    self._saveToS3(modelPathLocal)
+    
+  def load(self, modelName) -> ArtifactsMessage:
+    modelPathLocal = self._loadFromS3(modelName)
+    artifactsMessage = self._loadFromLocal(modelPathLocal)
+    return artifactsMessage
+  
     
   def _saveToLocal(self, artifactsMessage) -> str:
     '''
@@ -41,7 +45,7 @@ class ArtifactsIOHandler(EnforceOverrides):
     
     modelType = artifactsMessage.meta['model_type']
     modelName = artifactsMessage.meta['model_name']
-    parentPath = self.localRootPath + f'{modelType}/{modelName}/'
+    parentPath = self.localArtifactsPath + f'{modelType}/{modelName}/'
     
     if not pathlib.os.path.exists(parentPath):
       pathlib.os.makedirs(parentPath)
@@ -58,14 +62,31 @@ class ArtifactsIOHandler(EnforceOverrides):
     logger.info(f'Model artifact saved to local file: {modelPath}')
     return modelPath
   
-  def _saveToS3(self, modelPathStr) -> None:
-    modelPath = pathlib.Path(modelPathStr)
-    s3Path = self.s3BucketPath + str(modelPath.parent)
-    S3Uploader.upload(modelPathStr, s3Path)
+  def _saveToS3(self, modelPathLocalStr) -> None:
+    modelPathLocal = pathlib.Path(modelPathLocalStr)
+    s3Path = self.s3BucketPath + str(modelPathLocal.parent)
+    S3Uploader.upload(modelPathLocalStr, s3Path)
     logger.info(
       'Model artifact saved to s3:'
-      f' {s3Path}/{modelPath.stem}{modelPath.suffix}'
+      f' {s3Path}/{modelPathLocal.stem}{modelPathLocal.suffix}'
     )
+    
+  def _loadFromS3(self, modelName) -> str:
+    allArtifactsS3 = S3Downloader.list(self.s3ArtifactsPath)
+    
+    matchingArtifactsS3 = [
+      a for a in allArtifactsS3
+      if pathlib.Path(a).stem == modelName
+    ]
+    assert len(matchingArtifactsS3) > 0, f'{modelName=} not found'
+    assert len(matchingArtifactsS3) < 2, (
+      f'Multiple models found for {modelName=}'
+    )
+    
+    artifactPathS3 = matchingArtifactsS3[0]
+    
+    breakpoint() # PICK UP HERE. Need to download model locally and return local path
+
     
 #   def _localSaveTorch(
 #     self, artifacts, returnModelPath=False
@@ -168,112 +189,112 @@ class LocalArtifactsIOHandler(ArtifactsIOHandler):
     self._localSaveSKLearn(artifacts)    
 
 
-class S3ArtifactsIOHandler(ArtifactsIOHandler):
+# class S3ArtifactsIOHandler(ArtifactsIOHandler):
   
-#   @overrides
-  def __init__(self, params):
-    self.params = params.copy()
-    self.s3ProjectRootPath = f's3://{S3_BUCKET}/nysparcs/'
+# #   @overrides
+#   def __init__(self, params):
+#     self.params = params.copy()
+#     self.s3ProjectRootPath = f's3://{S3_BUCKET}/nysparcs/'
     
-#   @overrides
-  def saveTorch(self, artifacts) -> None:
-    modelPath = self._localSaveTorch(artifacts, returnModelPath=True)
+# #   @overrides
+#   def saveTorch(self, artifacts) -> None:
+#     modelPath = self._localSaveTorch(artifacts, returnModelPath=True)
     
-    s3Path = self.s3ProjectRootPath + str(modelPath.parent)
-    S3Uploader.upload(str(modelPath), s3Path)
-    logger.info(f'Uploading model to s3: {s3Path}/{modelPath.stem}{modelPath.suffix}')
+#     s3Path = self.s3ProjectRootPath + str(modelPath.parent)
+#     S3Uploader.upload(str(modelPath), s3Path)
+#     logger.info(f'Uploading model to s3: {s3Path}/{modelPath.stem}{modelPath.suffix}')
     
-#   @overrides
-  def loadTorch(self) -> OrderedDict:
+# #   @overrides
+#   def loadTorch(self) -> OrderedDict:
     
-    # Note: cannot use pathlib.Path here because need to preserve consecutive 
-    # slashes in 's3://' 
-    artifactsDir = self.s3ProjectRootPath + 'artifacts/pytorch/'
-    modelName = self.params['pytorch_model']
-    artifactsModelDir = artifactsDir + modelName
+#     # Note: cannot use pathlib.Path here because need to preserve consecutive 
+#     # slashes in 's3://' 
+#     artifactsDir = self.s3ProjectRootPath + 'artifacts/pytorch/'
+#     modelName = self.params['pytorch_model']
+#     artifactsModelDir = artifactsDir + modelName
     
-    if self.params['load_latest_state_dict']:
+#     if self.params['load_latest_state_dict']:
       
-      artifactsDirContents = S3Downloader.list(artifactsDir)
-      modelName = self.params['pytorch_model']
+#       artifactsDirContents = S3Downloader.list(artifactsDir)
+#       modelName = self.params['pytorch_model']
       
-      for a in artifactsDirContents:
-        if len(re.findall(f'/{modelName}_', a)) > 0:
-          break
-      else:
-        logger.warning(f'No previous artifacts found for {modelName=}')
-        return
+#       for a in artifactsDirContents:
+#         if len(re.findall(f'/{modelName}_', a)) > 0:
+#           break
+#       else:
+#         logger.warning(f'No previous artifacts found for {modelName=}')
+#         return
       
-      artifacts = [
-        a for a in artifactsDirContents
-        if  len(re.findall(f'/{modelName}_', a)) > 0
-      ]
+#       artifacts = [
+#         a for a in artifactsDirContents
+#         if  len(re.findall(f'/{modelName}_', a)) > 0
+#       ]
 
-      if len(artifacts) == 0:
-        logger.warning(f'No previous artifacts found for {modelName=}')
-        return
-      else:
-        artifacts.sort(reverse=True)
+#       if len(artifacts) == 0:
+#         logger.warning(f'No previous artifacts found for {modelName=}')
+#         return
+#       else:
+#         artifacts.sort(reverse=True)
         
-    elif (targetModel := self.params['load_state_dict']) is not None:
-      artifacts = [
-        a for a in S3Downloader.list(artifactsModelDir)
-        if (
-          re.sub('\.pt|\.pth', '', targetModel) 
-          == re.sub('\.pt|\.pth', '', a)
-        )
-      ]
-      assert len(artifacts) > 0, f'{targetModel=} not found'
-      assert len(artifacts) < 2, f'multiple artifacts found for {targetModel=}'
+#     elif (targetModel := self.params['load_state_dict']) is not None:
+#       artifacts = [
+#         a for a in S3Downloader.list(artifactsModelDir)
+#         if (
+#           re.sub('\.pt|\.pth', '', targetModel) 
+#           == re.sub('\.pt|\.pth', '', a)
+#         )
+#       ]
+#       assert len(artifacts) > 0, f'{targetModel=} not found'
+#       assert len(artifacts) < 2, f'multiple artifacts found for {targetModel=}'
       
-    else:
-      raise Exception(
-        'Invalid combination of load_latest_state_dict and load_state_dict args'
-      )
+#     else:
+#       raise Exception(
+#         'Invalid combination of load_latest_state_dict and load_state_dict args'
+#       )
       
-    artifactsPath = artifacts[0]
-    logger.info(f'Loading model artifacts locally from s3 path: {artifactsPath}')
+#     artifactsPath = artifacts[0]
+#     logger.info(f'Loading model artifacts locally from s3 path: {artifactsPath}')
     
-    localDir = f'artifacts/pytorch/{modelName}/'
-    S3Downloader.download(artifactsPath, localDir)
+#     localDir = f'artifacts/pytorch/{modelName}/'
+#     S3Downloader.download(artifactsPath, localDir)
     
-    modelFile = pathlib.Path(artifactsPath).stem + pathlib.Path(artifactsPath).suffix
-    return self._localLoadTorch(modelFile)
+#     modelFile = pathlib.Path(artifactsPath).stem + pathlib.Path(artifactsPath).suffix
+#     return self._localLoadTorch(modelFile)
     
-#   @overrides
-  def saveSKLearn(self, artifacts) -> None:
-    modelPath = self._localSaveSKLearn(artifacts, returnModelPath=True)
+# #   @overrides
+#   def saveSKLearn(self, artifacts) -> None:
+#     modelPath = self._localSaveSKLearn(artifacts, returnModelPath=True)
     
-    s3Path = self.s3ProjectRootPath + str(modelPath.parent)
-    S3Uploader.upload(str(modelPath), s3Path)
-    logger.info(f'Uploading model to s3: {s3Path}/{modelPath.stem}{modelPath.suffix}')
+#     s3Path = self.s3ProjectRootPath + str(modelPath.parent)
+#     S3Uploader.upload(str(modelPath), s3Path)
+#     logger.info(f'Uploading model to s3: {s3Path}/{modelPath.stem}{modelPath.suffix}')
 
-  def getAllModelArtifacts(self) -> T.List[str]:
+#   def getAllModelArtifacts(self) -> T.List[str]:
     
-    def listAllArtifactPaths(path, list_) -> None:
-      for item in S3Downloader.list(path):
-        if re.findall('\.pt$|\.sk$', item):
-          list_.append(item)
-        else:
-          listAllArtifactPaths(item)
+#     def listAllArtifactPaths(path, list_) -> None:
+#       for item in S3Downloader.list(path):
+#         if re.findall('\.pt$|\.sk$', item):
+#           list_.append(item)
+#         else:
+#           listAllArtifactPaths(item)
     
-    rootPath = self.s3ProjectRootPath + 'artifacts'
-    modelArtifacts = []
-    listAllArtifactPaths(rootPath, modelArtifacts)
+#     rootPath = self.s3ProjectRootPath + 'artifacts'
+#     modelArtifacts = []
+#     listAllArtifactPaths(rootPath, modelArtifacts)
     
-    return modelArtifacts
+#     return modelArtifacts
   
-  def downloadModelsFromList(self, modelsList) -> None:
-    for m in modelsList:
-      if m.endswith('.pt'):
-        localDir = (
-          pathlib.Path('artifacts/pytorch')/pathlib.Path(m).parent.stem
-        )
-      elif m.endswith('.sk'):
-        localDir = (
-          pathlib.Path('artifacts/sklearn')/pathlib.Path(m).parent.stem
-        )
-      S3Downloader.download(m, localDir)
+#   def downloadModelsFromList(self, modelsList) -> None:
+#     for m in modelsList:
+#       if m.endswith('.pt'):
+#         localDir = (
+#           pathlib.Path('artifacts/pytorch')/pathlib.Path(m).parent.stem
+#         )
+#       elif m.endswith('.sk'):
+#         localDir = (
+#           pathlib.Path('artifacts/sklearn')/pathlib.Path(m).parent.stem
+#         )
+#       S3Downloader.download(m, localDir)
     
 # class ArtifactsIOHandlerFactory:
   

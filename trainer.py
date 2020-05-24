@@ -35,7 +35,7 @@ class Trainer(EnforceOverrides):
     self.params = params.copy()
     self.dataReader = DataReaderFactory.make(params)
     self.dataProcessor = DataProcessor(params)
-    self.artifactsIOHandler = ArtifactsIOHandler(params)
+    self.artifactsIOHandler = ArtifactsIOHandler()
     
     self.inputColTypes = None
     self.valPerformanceMetrics = None
