@@ -97,6 +97,9 @@ class Deployer:
         with open(m.as_posix(), 'rb') as file:
           modelBytes = file.read()
         modelsAndPerf.append((m, pickle.loads(modelBytes)))
+      else:
+        raise ValueError(f'{m=} not recognized model type')
+        
           
     bestModel = None
     bestScore = 0
@@ -107,6 +110,8 @@ class Deployer:
       
     assert bestModel is not None
     return bestModel
+  
+#   def _loadModel(self, modelFile) -> 
       
     
     
