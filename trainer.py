@@ -312,7 +312,7 @@ class SKLearnTrainer(Trainer):
     artifacts = {
       'model_pipeline': self.pipeline
     }
-    message = self.artifactsIOHandler.Message(meta, artifacts)
+    message = ArtifactsMessage(meta, artifacts)
     self.artifactsIOHandler.save(message)
   
   def _splitXY(self, inDF) -> T.Tuple[pd.DataFrame, pd.Series]:
