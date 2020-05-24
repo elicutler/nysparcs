@@ -38,18 +38,6 @@ class TrainArgParser:
     self.parser.add_argument('--socrata_data_key', type=str)
     self.parser.add_argument('--s3_data_path', type=str)
     self.parser.add_argument(
-      '--load_latest_state_dict', action='store_true', help=(
-        'Load latest model and optimizer state_dicts for pytorch model'
-        ' of specified type. If none is found, do nothing.'
-      )
-    )
-    self.parser.add_argument(
-      '--load_state_dict', type=str, help=(
-        'Load specified state_dict of model and optimizer for'
-        ' pytorch model of specified type. If not found, an error is thrown.'
-      )
-    )
-    self.parser.add_argument(
       '--eval_metric', type=str, help=(
         'Scoring metric for sk-learn model selection'
       )
@@ -147,12 +135,5 @@ class TrainArgParser:
     )
     # only set epochs and/or batch_size for pytorch models
     assert bool(args.pytorch_model) is bool(args.epochs) is bool(args.batch_size)
-    # only pass state_dict, optionally, for pytorch models
-    assert not (
-      args.sklearn_model 
-      and (args.load_latest_state_dict or args.load_state_dict)
-    )
-    # pass either latest or specified state dict but not both
-    assert not (args.load_latest_state_dict and args.load_state_dict)
     # only pass eval_metric and n_iter for sklearn models
     assert bool(args.sklearn_model) is bool(args.eval_metric) is bool(args.n_iter)

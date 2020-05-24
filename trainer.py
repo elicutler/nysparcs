@@ -18,7 +18,7 @@ from sklearn.metrics import mean_absolute_error, median_absolute_error
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
-from artifacts_io_handler import ArtifactsIOHandlerFactory
+from artifacts_io_handler import ArtifactsIOHandler
 from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
 from utils import getNumCores
@@ -35,7 +35,7 @@ class Trainer(EnforceOverrides):
     self.params = params.copy()
     self.dataReader = DataReaderFactory.make(params)
     self.dataProcessor = DataProcessor(params)
-    self.artifactsIOHandler = ArtifactsIOHandlerFactory.make(params)
+    self.artifactsIOHandler = ArtifactsIOHandler(params)
     
     self.inputColTypes = None
     self.valPerformanceMetrics = None
@@ -211,16 +211,20 @@ class TorchTrainer(Trainer):
   @overrides
   def saveModel(self) -> None:
 
-    artifacts = {
+    meta = {
+      'model_type': 'torch',
       'target': self.params['target'],
       'val_range': self.params['val_range'],
-      'input_col_types': self.inputColTypes,
+      'val_perf_metrics': self.valPerformanceMetrics,
+      'input_col_types': self.inputColTypes
+    }
+    artifacts = {
       'sklearn_processor': self.sklearnProcessor.get(),
       'model_state_dict': self.model.state_dict(),
       'optimizer_state_dict': self.optimizer.state_dict(),
-      'val_perf_metrics': self.valPerformanceMetrics
     }
-    self.artifactsIOHandler.saveTorch(artifacts)
+    message = self.artifactsIOHandler.Message(meta, artifacts)
+    self.artifactsIOHandler.save(message)
 
   def _loadModel(self, featureNames) -> T.Type[nn.Module]:
     

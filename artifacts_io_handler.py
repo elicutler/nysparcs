@@ -6,7 +6,7 @@ import pickle
 import re
 import torch
 
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from sagemaker.s3 import S3Uploader, S3Downloader
@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 class ArtifactsIOHandler(EnforceOverrides):
+  
+  Message = namedtuple('Message', ['meta', 'artifacts'])
   
   @abstractmethod
   def __init__(self, params):
