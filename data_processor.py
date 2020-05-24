@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class DataProcessor:
   
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     self.params = params.copy()
     
     self.df = None
@@ -25,7 +25,7 @@ class DataProcessor:
     
     if self.dfIsProcessed is True:
       self.dfIsProcessed = False
-    
+      
   def processDF(self) -> pd.DataFrame:
     logger.info('Processing data')
     
@@ -39,6 +39,7 @@ class DataProcessor:
     
     self.df.columns = self._sanitizeColNames(self.df.columns)
     self._processLOS()
+    self._objToFloatCols()
     self._floatToIntCols()
     self._mergeCodeAndDescCols()
     self._sanitizeStrCols()
@@ -81,6 +82,14 @@ class DataProcessor:
     losCol = losCol.astype(np.float64).astype(pd.Int64Dtype())
     losCol.loc[losCol < 0] = pd.NA
     self.df[losColName] = losCol
+    
+  def _objToFloatCols(self) -> None:
+    objToFloatCols = ['total_charges', 'total_costs', 'birth_weight']
+    
+    for c in objToFloatCols:
+      if c in self.df.columns:
+        self.df[c] = self.df[c].astype(float)
+        logger.info(f'Col \'{c}\' converted from obj to float')
   
   def _floatToIntCols(self) -> None:
     floatCols = self.df.select_dtypes(include=['float']).columns

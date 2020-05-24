@@ -1,15 +1,12 @@
 
 import typing as T
 import logging
-import pathlib
-import re
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch_models
 import pandas as pd
 import numpy as np
-import pickle
 
 from collections import OrderedDict
 from abc import abstractmethod
@@ -21,9 +18,11 @@ from sklearn.metrics import mean_absolute_error, median_absolute_error
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
+from artifacts_io_handler import ArtifactsIOHandlerFactory
 from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
-from utils import getNumCores, nowTimestampStr, FIXED_SEED
+from utils import getNumCores
+from constants import FIXED_SEED
 from sklearn_pipelines import SKLearnPipelineMaker
 
 logger = logging.getLogger(__name__)
@@ -32,10 +31,11 @@ logger = logging.getLogger(__name__)
 class Trainer(EnforceOverrides):
   
   @abstractmethod
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     self.params = params.copy()
     self.dataReader = DataReaderFactory.make(params)
     self.dataProcessor = DataProcessor(params)
+    self.artifactsIOHandler = ArtifactsIOHandlerFactory.make(params)
     
     self.inputColTypes = None
     self.valPerformanceMetrics = None
@@ -47,11 +47,7 @@ class Trainer(EnforceOverrides):
   @abstractmethod
   def saveModel(self):
     pass
-  
-  @abstractmethod
-  def deployModel(self):
-    pass
-  
+
   @final
   def _calcPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
     
@@ -94,7 +90,7 @@ class Trainer(EnforceOverrides):
 class TorchTrainer(Trainer):
 
   @overrides
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     super().__init__(params)
     self.sklearnProcessor = SKLearnProcessor(params)
     self.model = None
@@ -119,10 +115,11 @@ class TorchTrainer(Trainer):
     torchValDF = TorchDataset(self.params, valDF, sklearnProcessor)
     
     batchSize = self.params['batch_size']
-#     numWorkers = (
-#       getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
-#     )
-    numWorkers = 0 # DataLoader error with multiprocessing
+    numWorkers = (
+      getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
+    )
+    logger.info(f'Running on {numWorkers} cores')
+    
     trainLoader = DataLoader(
       torchTrainDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
     )
@@ -213,29 +210,18 @@ class TorchTrainer(Trainer):
 
   @overrides
   def saveModel(self) -> None:
-    pytorchArtifactsDir = pathlib.Path('artifacts/pytorch/')
-    modelName = self.params['pytorch_model']
-    thisModelDir = pytorchArtifactsDir/modelName
-    
-    if modelName not in pathlib.os.listdir(pytorchArtifactsDir):
-      pathlib.os.mkdir(thisModelDir)
-    
-    modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.pt'
+
     artifacts = {
       'target': self.params['target'],
       'val_range': self.params['val_range'],
       'input_col_types': self.inputColTypes,
+      'sklearn_processor': self.sklearnProcessor.get(),
       'model_state_dict': self.model.state_dict(),
       'optimizer_state_dict': self.optimizer.state_dict(),
       'val_perf_metrics': self.valPerformanceMetrics
     }
-    torch.save(artifacts, modelPath)
-    logger.info(f'Saving model artifacts to {modelPath}')
+    self.artifactsIOHandler.saveTorch(artifacts)
 
-  @overrides
-  def deployModel(self):
-    pass
-  
   def _loadModel(self, featureNames) -> T.Type[nn.Module]:
     
     if (modelName := self.params['pytorch_model']) == 'CatEmbedNet':
@@ -247,52 +233,15 @@ class TorchTrainer(Trainer):
     return modelClass(featureNames)
   
   def _loadStateDicts(self) -> None:
-    pytorchArtifactsDir = pathlib.Path('artifacts/pytorch/')
     
-    if self.params['load_latest_state_dict']:
+    if (checkpoint := self.artifactsIOHandler.loadTorch()) is not None:
       
-      if (
-        (modelName := self.params['pytorch_model'])
-        not in (pytorchArtifactsDirContents := pathlib.os.listdir(pytorchArtifactsDir))
-      ):
-        logger.warning(f'No previous state dicts found for {modelName=}')
-        return
-      
-      else:
-        artifacts = [
-          a for a in pathlib.os.listdir(pytorchArtifactsDir/modelName)
-          if a.startswith(modelName)
-        ]
-        
-        if len(artifacts) == 0:
-          logger.warning(f'No previous state dicts found for {modelName=}')
-          return
-        else:
-          artifacts.sort(reverse=True)
-        
-    elif (targetModel := self.params['load_state_dict']) is not None:
-      artifacts = [
-        a for a in pathlib.os.listdir(pytorchArtifactsDir/modelName)
-        if (
-          re.sub('\.pt|\.pth', '', targetModel) 
-          == re.sub('\.pt|\.pth', '', a)
-        )
-      ]
-      assert len(artifacts) > 0, f'{targetModel=} not found'
-      assert len(artifacts) < 2, f'multiple artifacts found for {targetModel=}'
+      self._validateInputColumns(checkpoint['input_col_types'])
+      self.model.load_state_dict(checkpoint['model_state_dict'])
+      self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
       
     else:
-      raise Exception(
-        'Invalid combination of load_latest_state_dict and load_state_dict args'
-      )
-      
-    artifactsPath = pytorchArtifactsDir/modelName/artifacts[0]
-    logger.info(f'Loading model and optimizer state dicts from {artifactsPath}')
-    
-    checkpoint = torch.load(artifactsPath)
-    self._validateInputColumns(checkpoint['input_col_types'])
-    self.model.load_state_dict(checkpoint['model_state_dict'])
-    self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+      logger.warning('No state dict loaded')
       
   def _makeLossCriterion(self) -> None:
     
@@ -309,18 +258,18 @@ class TorchTrainer(Trainer):
   
   def _validateInputColumns(self, loadedInputColTypes) -> None:
     assert (self.inputColTypes.index == loadedInputColTypes.index).all(), (
-      f'Input column names do not match:\n{self.inputColTypes.columns=}'
-      f'\n{loadedInputColTypes.columns=}'
+      f'Input column names do not match:\n{self.inputColTypes=}'
+      f'\n{loadedInputColTypes=}'
     )
     assert (self.inputColTypes.values == loadedInputColTypes.values).all(), (
-      f'Input column data types do not match:\n{self.inputColTypes.columns}'
-      '\n{loadedInputColTypes.columns=}'
+      f'Input column data types do not match:\n{self.inputColTypes=}'
+      f'\n{loadedInputColTypes=}'
     )
     
     
 class SKLearnTrainer(Trainer):
   
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     super().__init__(params)
     self.sklearnPipelineMaker = SKLearnPipelineMaker(params)
     
@@ -360,22 +309,7 @@ class SKLearnTrainer(Trainer):
       'pipeline': self.pipeline,
       'val_perf_metrics': self.valPerformanceMetrics
     }
-    sklearnArtifactsDir = pathlib.Path('artifacts/sklearn')
-    modelName = self.params['sklearn_model']
-    thisModelDir = sklearnArtifactsDir/modelName
-    
-    if modelName not in pathlib.os.listdir(sklearnArtifactsDir):
-      pathlib.os.mkdir(thisModelDir)
-      
-    modelPath = thisModelDir/f'{modelName}_{nowTimestampStr()}.sk'
-    with open(modelPath, 'wb') as file:
-      pickle.dump(artifacts, file, protocol=5)
-      
-    logger.info(f'Saving model artifacts to {modelPath}')
-    
-  @overrides
-  def deployModel(self) -> None:
-    pass
+    self.artifactsIOHandler.saveSKLearn(artifacts)
   
   def _splitXY(self, inDF) -> T.Tuple[pd.DataFrame, pd.Series]:
     target = self.params['target']

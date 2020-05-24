@@ -4,16 +4,18 @@ import logging
 import pandas as pd
 import json
 
+from pathlib import Path
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from sodapy import Socrata
+from constants import S3_BUCKET
 
 logger = logging.getLogger(__name__)
 
 
 class DataReader(EnforceOverrides):
   
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     self.params = params.copy()
   
   @abstractmethod
@@ -25,14 +27,23 @@ class DataReader(EnforceOverrides):
     pass
   
 
-class LocalDataReader(DataReader):
+class LocalOrS3DataReader(DataReader):
   
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     super().__init__(params)
+    
+    self.dataLoc = 'local' if self.params['local_data_path'] is not None else 's3'
+    
+    if self.dataLoc == 'local':
+      self.dataPath = Path(params['local_data_path'])
+    
+    elif self.dataLoc == 's3':
+      s3Prefix = Path(f's3://{S3_BUCKET}/nysparcs/')
+      self.dataPath = s3Prefix/params['s3_data_path']
     
   @overrides
   def read(self) -> pd.DataFrame:
-    logger.info('Reading data from local path...')
+    logger.info(f'Reading data from {self.dataLoc} path...')
     
     trainStart, trainEnd = self.params['train_range']
     trainDF = self._readNumRowsFromStartRow(
@@ -51,9 +62,10 @@ class LocalDataReader(DataReader):
 
   @overrides
   def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
-    colNames = pd.read_csv(self.params['local_data_path'], nrows=0).columns
+    
+    colNames = pd.read_csv(self.dataPath, nrows=0).columns
     df = pd.read_csv(
-      self.params['local_data_path'], skiprows=startRow-1, nrows=numRows,
+      self.dataPath, skiprows=startRow-1, nrows=numRows,
       header=None, names=colNames
     )
     return df
@@ -61,7 +73,7 @@ class LocalDataReader(DataReader):
 
 class SocrataDataReader(DataReader):
   
-  def __init__(self, params) -> None:
+  def __init__(self, params):
     super().__init__(params)
     self.socrataConn = self._establishSocrataConn()
     
@@ -86,6 +98,7 @@ class SocrataDataReader(DataReader):
     
   @overrides
   def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
+    
     socrataDataKey = self.params['socrata_data_key']
     dataRecs = self.socrataConn.get(
       socrataDataKey, order=':id', offset=startRow, limit=numRows
@@ -104,11 +117,25 @@ class DataReaderFactory:
   @staticmethod
   def make(params) -> T.Type[DataReader]:
     
-    dataLoc = 'local' if params['local_data_path'] is not None else 'socrata'
-    
-    if dataLoc == 'local':
-      return LocalDataReader(params)
+    if params['local_data_path'] is not None:
+      dataLoc = 'local'
+      
+    elif params['socrata_data_key'] is not None:
+      dataLoc = 'socrata'
+      
+    elif params['s3_data_path'] is not None:
+      dataLoc = 's3'
+      
+    else:
+      raise Error('data location cannot be inferred from params')
+      
+    if dataLoc in ['local', 's3']:
+      dataReader = LocalOrS3DataReader
+      
     elif dataLoc == 'socrata':
-      return SocrataDataReader(params)
-    
-    raise ValueError(f'{dataLoc=} not recognized')
+      dataReader = SocrataDataReader
+      
+    else:
+      raise ValueError(f'{dataLoc=} not recognized')
+      
+    return dataReader(params)

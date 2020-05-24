@@ -14,18 +14,18 @@ logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
   
-  logger.info('Starting analysis')
+  logger.info('Begin training...')
 
   parser = TrainArgParser()
-#   params = SafeDict.fromNamespace(parser.parseArgs())
-  params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'torch_test_local']))
+  params = SafeDict.fromNamespace(parser.parseArgs())
+#   params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'torch_test_local']))
+#   params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'torch_test_cloud']))
 #   params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'sklearn_test_local']))
+  
+  logger.info(f'params:\n{params}')
   
   trainer = TrainerFactory.make(params)
   trainer.train()
   trainer.saveModel()
   
-  if params.deploy:
-    trainer.deployModel()
-
-  logger.info('Analysis complete')
+  logger.info('Training complete')

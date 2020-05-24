@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class TrainArgParser:
   
-  def __init__(self) -> None:
+  def __init__(self):
     self.parser = argparse.ArgumentParser()
     
     self.parser.add_argument('--target', type=str)
@@ -36,6 +36,7 @@ class TrainArgParser:
     self.parser.add_argument('--sklearn_model', type=str)
     self.parser.add_argument('--local_data_path', type=str)
     self.parser.add_argument('--socrata_data_key', type=str)
+    self.parser.add_argument('--s3_data_path', type=str)
     self.parser.add_argument(
       '--load_latest_state_dict', action='store_true', help=(
         'Load latest model and optimizer state_dicts for pytorch model'
@@ -76,7 +77,11 @@ class TrainArgParser:
       '--num_workers', type=int, default=-1, 
       help='-1: Use all but one core for training. (Default: -1)'
     )
-    self.parser.add_argument('--deploy', action='store_true')
+    self.parser.add_argument(
+      '--artifacts_env', type=str, help=(
+        "Artifacts location. Either 'local' or 's3'."
+      )
+    )
     self.parser.add_argument(
       '--run_id', type=str, 
       help=(
@@ -130,10 +135,14 @@ class TrainArgParser:
     assert args.target in ['prior_auth_dispo', 'length_of_stay']
     # categorical feature encoding
     assert args.cat_encoder_strat in ['one_hot', 'target']
-    # pytorch model xor sklearn model
+    # pytorch model XOR sklearn model
     assert bool(args.pytorch_model) + bool(args.sklearn_model) == 1
-    # local data path xor internet data key
-    assert bool(args.local_data_path) + bool(args.socrata_data_key) == 1
+    # local data path XOR socrata data key XOR s3_data_path
+    assert (
+      bool(args.local_data_path) 
+      + bool(args.socrata_data_key)
+      + bool(args.s3_data_path)
+    ) == 1
     # non-overlapping train/test intervals with start <= end  
     assert args.train_range[0] <= args.train_range[1]
     assert args.val_range[0] <= args.val_range[1]
@@ -152,3 +161,5 @@ class TrainArgParser:
     assert not (args.load_latest_state_dict and args.load_state_dict)
     # only pass eval_metric and n_iter for sklearn models
     assert bool(args.sklearn_model) is bool(args.eval_metric) is bool(args.n_iter)
+    # artifacts location
+    assert args.artifacts_env in ['local', 's3']

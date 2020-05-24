@@ -10,7 +10,8 @@ from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import RandomizedSearchCV
 from target_encoder import TargetEncoder
-from utils import getNumCores, FIXED_SEED
+from utils import getNumCores
+from constants import FIXED_SEED
 
 logger = logging.getLogger(__name__)
 
