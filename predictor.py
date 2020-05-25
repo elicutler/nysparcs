@@ -2,10 +2,13 @@
 import typing as T
 import logging
 import json
+import pandas as pd
 
+from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
-from model_manager import ModelManagerFactory
-from data_processor import DataProcessor
+from artifacts_io_handler import ArtifactsIOHandler
+from data_processor import DataProcessorFactory
+from model_manager import ModelManager
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +16,10 @@ logger = logging.getLogger(__name__)
 class Predictor(EnforceOverrides):
   
   @abstractmethod
-  def __init__(self, params):
+  def __init__(self, params, artifactsMessage):
     self.params = params.copy()
+    self.artifactsMessage = artifactsMessage
+    self.dataProcessor = DataProcessorFactory.make('train', params) #change to predict after debugging
     
   @abstractmethod
   def predict(self):
@@ -25,6 +30,7 @@ class Predictor(EnforceOverrides):
     '''
     Parse instances from JSON file or JSON string.
     '''
+    # Could use pd.from_json() instead, but this gives more flexibility
     try:
       with open(self.params['instances'], 'r') as file:
         instances = json.load(file)
@@ -37,23 +43,46 @@ class Predictor(EnforceOverrides):
   
 class PytorchPredictor(Predictor):
   
-  def __init__(self, params):
-    super().__init__(params)
+  def __init__(self, params, artifactsMessage):
+    super().__init__(params, artifactsMessage)
     
   @overrides
   def predict(self) -> dict:
     
     instances = self._parseInstances()
-    rawDF = 
+    rawDF = pd.DataFrame.from_dict(instances, orient='index')
+    self.dataProcessor.loadDF(rawDF)
+    breakpoint()
+    self.dataProcessor.processDF()
+    processedDF = self.dataProcessor.getProcessedDF()    
     
+      
+class PredictorFactory:
+  
+  @staticmethod
+  def make(params) -> T.Type[Predictor]:
     
-    modelManager = ModelManagerFactory.make(params)
-
-    if (modelName := self.params['model_name']) is not None:
-      model = modelManager.loadModel(modelName)
-
-    elif self.params['best_model'] is not None:
-      model = modelManager.loadBestModel(
+    if (modelName := params['model_name']) is not None:
+      artifactsIOHandler = ArtifactsIOHandler()
+      artifactsMessage = artifactsIOHandler.load(modelName)
+      
+    elif params['best_model']:
+      artifactsMessage = ModelManager.getBestModel(
         params['target'], params['eval_metric']
       )
+      
+    else:
+      raise Exception('Neither model_name nor best_model truthy in params')
+      
+    if (modelType := artifactsMessage.meta['model_type']) == 'pytorch':
+      Predictor_ = PytorchPredictor
+      
+    elif modelType == 'sklearn':
+      Predictor_ = SKLearnPredictor
+      
+    else:
+      raise ValueError(f'{modelType=} not recognized')
+      
+    return Predictor_(params, artifactsMessage)
+      
       

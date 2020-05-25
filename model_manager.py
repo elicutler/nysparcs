@@ -19,21 +19,21 @@ class ModelManager:
     self.params = params.copy()
     self.artifactsIOHandler = ArtifactsIOHandler()
     
-  def loadModel(self, modelName) -> None:
+#   def loadModel(self, modelName) -> None:
     
-    meta, artifacts = self.artifactsIOHandler.load(modelName)
-    modelPathDashes = re.sub('[/\.]', '-', meta['artifacts_path'])
+#     meta, artifacts = self.artifactsIOHandler.load(modelName)
+#     modelPathDashes = re.sub('[/\.]', '-', meta['artifacts_path'])
     
-    if (modelType := meta['model_type']) == 'sklearn':
-      model = artifacts['model_pipeline']
+#     if (modelType := meta['model_type']) == 'sklearn':
+#       model = artifacts['model_pipeline']
       
-    elif modelType == 'pytorch':
-      breakpoint()
+#     elif modelType == 'pytorch':
+#       breakpoint()
     
-    else:
-      raise ValueError(f'{modelType=} not recognized')
+#     else:
+#       raise ValueError(f'{modelType=} not recognized')
       
-    breakpoint()
+#     breakpoint()
     
   
   def deployBestModel(self, target, evalMetric) -> None:

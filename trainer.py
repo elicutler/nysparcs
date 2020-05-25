@@ -15,7 +15,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import confusion_matrix, roc_auc_score, average_precision_score
 from sklearn.metrics import mean_absolute_error, median_absolute_error
 from data_reader import DataReaderFactory
-from data_processor import DataProcessor
+from data_processor import DataProcessorFactory
 from sklearn_processor import SKLearnProcessor
 from torch_models import ModelArchitectureFactory
 from artifacts_io_handler import ArtifactsIOHandler, ArtifactsMessage
@@ -34,7 +34,7 @@ class Trainer(EnforceOverrides):
   def __init__(self, params):
     self.params = params.copy()
     self.dataReader = DataReaderFactory.make(params)
-    self.dataProcessor = DataProcessor(params)
+    self.dataProcessor = DataProcessorFactory.make('train', params)
     self.artifactsIOHandler = ArtifactsIOHandler()
     
     self.inputColTypes = None
@@ -101,7 +101,6 @@ class TorchTrainer(Trainer):
   def train(self):
     
     rawDF = self.dataReader.read()
-    
     self.dataProcessor.loadDF(rawDF)
     self.dataProcessor.processDF()
     trainDF, valDF = self.dataProcessor.getTrainValDFs()
@@ -133,8 +132,6 @@ class TorchTrainer(Trainer):
     
     self.model = self.modelArchitecture(sklearnProcessor.featureNames).to(device)
     self.optimizer = optim.Adam(self.model.parameters())
-    breakpoint()
-      
     lossCriterion = self._makeLossCriterion()
     
     allEpochTrainLosses = []
@@ -268,7 +265,6 @@ class SKLearnTrainer(Trainer):
   def train(self) -> None:
     
     rawDF = self.dataReader.read()
-    
     self.dataProcessor.loadDF(rawDF)
     self.dataProcessor.processDF()
     trainDF, valDF = self.dataProcessor.getTrainValDFs()
@@ -323,12 +319,12 @@ class TrainerFactory:
     modelType = 'pytorch' if params['pytorch_model'] is not None else 'sklearn'
 
     if modelType == 'pytorch':
-      trainer = TorchTrainer
+      Trainer_ = TorchTrainer
     
     elif modelType == 'sklearn':
-      trainer = SKLearnTrainer
+      Trainer_ = SKLearnTrainer
     
     else:
       raise ValueError(f'{modelType=} not recognized')
       
-    return trainer(params)
+    return Trainer_(params)

@@ -12,58 +12,25 @@ from pandas.api.types import is_numeric_dtype
 logger = logging.getLogger(__name__)
 
 
-class DataProcessor:
+class DataProcessor(EnforceOverrides):
   
+  @abstractmethod
   def __init__(self, params):
     self.params = params.copy()
     
     self.df = None
     self.dfIsProcessed = False
     
+  @final
   def loadDF(self, inDF) -> None:
     self.df = inDF.copy()
     
     if self.dfIsProcessed is True:
       self.dfIsProcessed = False
       
-  def processDF(self) -> pd.DataFrame:
-    logger.info('Processing data')
-    
-    if self.dfIsProcessed:
-      logger.warning('DF has already been processed. Nothing to do.')
-      return
-    
-    assert self.df is not None, 'First call self.loadDF()'
-    
-    finalColumns = [self.params['target']] + self.params['features']
-    
-    self.df.columns = self._sanitizeColNames(self.df.columns)
-    self._processLOS()
-    self._objToFloatCols()
-    self._floatToIntCols()
-    self._mergeCodeAndDescCols()
-    self._sanitizeStrCols()
-    self._makePriorAuthDispo()
-    self._removeUnusedCols()
-    self._nullifyInvalidNumericCols()
-    self._filterNumericOutliers()
-    self.df.reset_index(drop=True, inplace=True)
-    
-    self.dfIsProcessed = True
-    
-  def getTrainValDFs(self) -> T.Tuple[pd.DataFrame]:
-    
-    trainDF = (
-      self.df[self.df['train_val'] == 'train']
-      .drop(columns=['train_val'])
-      .reset_index(drop=True)
-    )
-    valDF = (
-      self.df[self.df['train_val'] == 'val']
-      .drop(columns=['train_val'])
-      .reset_index(drop=True)
-    )
-    return trainDF, valDF
+  @abstractmethod
+  def processDF(self) -> None:
+    pass
   
   def _sanitizeColNames(self,colNames) -> T.List[str]:
     return [self._sanitizeString(c) for c in colNames]
@@ -76,12 +43,11 @@ class DataProcessor:
     return s
   
   def _processLOS(self) -> None:
-    losColName = 'length_of_stay'
-    losCol = self.df[losColName].copy()
+    losCol = self.df['length_of_stay'].copy()
     losCol.loc[losCol == '120 +'] = np.nan
     losCol = losCol.astype(np.float64).astype(pd.Int64Dtype())
     losCol.loc[losCol < 0] = pd.NA
-    self.df[losColName] = losCol
+    self.df['length_of_stay'] = losCol
     
   def _objToFloatCols(self) -> None:
     objToFloatCols = ['total_charges', 'total_costs', 'birth_weight']
@@ -194,3 +160,68 @@ class DataProcessor:
         f' with \'{c}\' beyond {quantile=} value.'
       )
       
+  
+  
+class TrainDataProcessor(DataProcessor):
+  
+  @overrides
+  def __init__(self, params):
+    super().__init__(params)
+    
+  @overrides  
+  def processDF(self) -> None:
+    logger.info('Processing data')
+    
+    if self.dfIsProcessed:
+      logger.warning('DF has already been processed. Nothing to do.')
+      return
+    
+    assert self.df is not None, 'First call self.loadDF()'
+    
+    finalColumns = [self.params['target']] + self.params['features']
+    
+    self.df.columns = self._sanitizeColNames(self.df.columns)
+    self._processLOS()
+    self._objToFloatCols()
+    self._floatToIntCols()
+    self._mergeCodeAndDescCols()
+    self._sanitizeStrCols()
+    self._makePriorAuthDispo()
+    self._removeUnusedCols()
+    self._nullifyInvalidNumericCols()
+    self._filterNumericOutliers()
+    self.df.reset_index(drop=True, inplace=True)
+    
+    self.dfIsProcessed = True
+    
+  def getTrainValDFs(self) -> T.Tuple[pd.DataFrame]:
+    
+    trainDF = (
+      self.df[self.df['train_val'] == 'train']
+      .drop(columns=['train_val'])
+      .reset_index(drop=True)
+    )
+    valDF = (
+      self.df[self.df['train_val'] == 'val']
+      .drop(columns=['train_val'])
+      .reset_index(drop=True)
+    )
+    return trainDF, valDF
+  
+  
+class DataProcessorFactory:
+  
+  @staticmethod
+  def make(type_, params) -> T.Type[DataProcessor]:
+    
+    if type_ == 'train':
+      Processor_ = TrainDataProcessor
+    
+    elif type_ == 'predict':
+      Processor_ = PredictDataProcessor
+    
+    else:
+      raise ValueError(f'{type_=} not recognized')
+      
+    return Processor_(params)
+  

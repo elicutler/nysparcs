@@ -3,7 +3,7 @@ import typing as T
 import logging
 
 from safe_dict import SafeDict
-from predict_arg_parser import Predictor
+from predict_arg_parser import PredictArgParser
 from predictor import PredictorFactory
 
 logging.basicConfig(
@@ -16,12 +16,12 @@ if __name__ == '__main__':
   
   logger.info('Making predictions...')
   
-  parser = PredictyArgParser()
+  parser = PredictArgParser()
   params = SafeDict.fromNamespace(parser.parseArgs())
   
   logger.info(f'params:\n{params}')
   
-  predictor = Predictor(params)
+  predictor = PredictorFactory.make(params)
   predictions = predictor.predict()
   
   logger.info(f'Predictions:\n{predictions}')
