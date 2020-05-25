@@ -24,9 +24,9 @@ ArtifactsMessage = namedtuple('ArtifactsMessage', ['meta', 'artifacts'])
 
 class ArtifactsIOHandler(EnforceOverrides):
   
-  localArtifactsPath = 'nysparcs/artifacts/'
+  localArtifactsPath = 'artifacts/'
   s3BucketPath = f's3://{S3_BUCKET}/'
-  s3ArtifactsPath = s3BucketPath + localArtifactsPath
+  s3ArtifactsPath = s3BucketPath + 'nysparcs/' + localArtifactsPath
   
   def save(self, artifactsMessage) -> None:
     modelPathLocal = self._saveToLocal(artifactsMessage)
@@ -40,7 +40,7 @@ class ArtifactsIOHandler(EnforceOverrides):
     
   def _saveToLocal(self, artifactsMessage) -> str:
     '''
-    Save model locally and return path
+    Save artifacts locally and return path
     '''
     
     modelType = artifactsMessage.meta['model_type']
@@ -79,13 +79,22 @@ class ArtifactsIOHandler(EnforceOverrides):
       if pathlib.Path(a).stem == modelName
     ]
     assert len(matchingArtifactsS3) > 0, f'{modelName=} not found'
-    assert len(matchingArtifactsS3) < 2, (
+    assert not len(matchingArtifactsS3) > 1, (
       f'Multiple models found for {modelName=}'
     )
     
-    artifactPathS3 = matchingArtifactsS3[0]
+    artifactsPathS3 = matchingArtifactsS3[0]
+    artifactsPathLocal = re.sub(
+      self.s3ArtifactsPath, self.localArtifactsPath, artifactsPathS3
+    )
+    artifactsParentPathLocal = pathlib.Path(artifactsPathLocal).parent
+    S3Downloader.download(artifactsPathS3, artifactsParentPathLocal)
     
-    breakpoint() # PICK UP HERE. Need to download model locally and return local path
+    logger.info(
+      f'Downloaded artifact from {artifactsPathS3} to {artifactsPathLocal}'
+    )
+    return artifactsPathLocal
+    
 
     
 #   def _localSaveTorch(
