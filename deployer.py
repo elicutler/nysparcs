@@ -14,18 +14,16 @@ logger = logging.getLogger(__name__)
 
 class Deployer:
   
-  def __init__(self, params):
-    self.params = params.copy()
+  def __init__(self):
     self.artifactsIOHandler = ArtifactsIOHandler()
     
-  def deploy(self) -> None:
+  def deployModel(self, modelName) -> None:
     
-    self._deployModel(
-      self.params['model_name'] or self._getBestModel()
-    )
-    
-  def _deployModel(self, modelName) -> None:
-    artifactsMessage = self.artifactsIOHandler.load(modelName)
+    meta, artifacts = self.artifactsIOHandler.load(modelName)
+    breakpoint()
+  
+  def deployBestModel(self, target, evalMetric) -> None:
+    pass
     
 #     allS3Models = self.artifactsIOHandler.getAllModelArtifacts()
 #     self.artifactsIOHandler.downloadModelsFromList(allS3Models)

@@ -26,7 +26,7 @@ class ArtifactsIOHandler(EnforceOverrides):
   
   localArtifactsPath = 'artifacts/'
   s3BucketPath = f's3://{S3_BUCKET}/'
-  s3ArtifactsPath = s3BucketPath + 'nysparcs/' + localArtifactsPath
+  s3ArtifactsPath = s3BucketPath + localArtifactsPath
   
   def save(self, artifactsMessage) -> None:
     artifactsPathLocal = self._saveToLocal(artifactsMessage)
@@ -42,9 +42,10 @@ class ArtifactsIOHandler(EnforceOverrides):
     Save artifacts locally and return path
     '''
     
+    target = artifactsMessage.meta['target']
     modelType = artifactsMessage.meta['model_type']
     modelName = artifactsMessage.meta['model_name']
-    parentPath = self.localArtifactsPath + f'{modelType}/{modelName}/'
+    parentPath = self.localArtifactsPath + f'{target}/{modelType}/{modelName}/'
     
     if not pathlib.os.path.exists(parentPath):
       pathlib.os.makedirs(parentPath)
@@ -100,8 +101,13 @@ class ArtifactsIOHandler(EnforceOverrides):
     if artifactsPath.suffix == '.pt':
       return torch.load(artifactsPath)
     
-    elif artifactsPath.suffix = '.sk':
-      breakpoint()
+    elif artifactsPath.suffix == '.sk':
+      with open(artifactsPath, 'rb') as artifacts:
+        return pickle.loads(artifacts.read())
+      
+    else:
+      raise ValueError(f'file extension {artifactsPath.suffix} not recognized')
+        
     
 
     

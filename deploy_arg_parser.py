@@ -3,6 +3,8 @@ import typing as T
 import logging 
 import argparse
 
+from constants import EVAL_OPTIONS
+
 logger = logging.getLogger(__name__)
 
 
@@ -13,13 +15,21 @@ class DeployArgParser:
     
     self.parser.add_argument(
       '--model_name', type=str, help=(
-        'Deploy model with given name (exclude file type extension)'
+        'Deploy model with given name (exclude file type extension), '
+        ' i.e. path stem'
       )
     )
     self.parser.add_argument(
-      '--best_model_by_metric', type=str, help=(
-        'Deploy model with best performance on validation set'
-        ' based on specified metric.'
+      '--best_model', action=store_true, help=(
+        'Deploy best model. If specified, must also provide target and eval_metric.'
+      )
+    )
+    self.parser.add_argument(
+      '--target', type=str, help='target variable for selecting best model.'
+    )
+    self.parser.add_argument(
+      '--eval_metric', type=str, help=(
+        'Evaluation metric for selecting best model.'
       )
     )
     
@@ -30,10 +40,10 @@ class DeployArgParser:
   
   def _validateArgs(self, args) -> None:
     
-    assert (
-      bool(args.model_name) + bool(args.best_model_by_metric) == 1
-    )
-    
-    assert args.best_model_by_metric in [
-      None, 'roc_auc', 'pr_auc', 'mae', 'mse'
-    ]
+    # Deploy model by name XOR best model
+    assert bool(args.model_name) + bool(args.best_model) == 1
+    # If deploying best model, must specify target and eval metric
+    assert bool(args.best_model) is bool(args.target) is bool(args.eval_metric)
+    # If deploying best_model by eval_metric, must be valid metric
+    if args.eval_metric is not None:
+      assert args.eval_metric in EVAL_OPTIONS

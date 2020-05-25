@@ -72,7 +72,7 @@
     "train_range": [100, 2000],
     "val_range": [5001, 6000]
   },
-  "test_torch_socrata_data": {
+  "test_sklearn_socrata_data": {
     "target": "prior_auth_dispo",
     "target_type": "binary",
     "features": [
@@ -88,11 +88,11 @@
       "emergency_department_indicator",
       "total_charges"
     ],
-    "cat_encoder_strat": "one_hot",
-    "pytorch_model": "CatEmbedNet",
-    "s3_data_path": "data/Hospital_Inpatient_Discharges__SPARCS_De-Identified___2009.csv",
-    "epochs": 1,
-    "batch_size": 100,
+    "cat_encoder_strat": "target",
+    "sklearn_model": "gradient_boosting_classifier",
+    "socrata_data_key": "q6hk-esrj",
+    "eval_metric": "roc_auc",
+    "n_iter": 1,
     "train_range": [100, 2000],
     "val_range": [5001, 6000]
   }

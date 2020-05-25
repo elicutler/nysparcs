@@ -6,6 +6,7 @@ import json
 
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
+from constats import TARGET_OPTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ class TrainArgParser:
 
   def _validateArgs(self, args) -> None:
         
-    assert args.target in ['prior_auth_dispo', 'length_of_stay']
+    assert args.target in TARGET_OPTIONS
     # categorical feature encoding
     assert args.cat_encoder_strat in ['one_hot', 'target']
     # pytorch model XOR sklearn model

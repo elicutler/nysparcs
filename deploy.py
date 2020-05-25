@@ -21,7 +21,12 @@ if __name__ == '__main__':
   
   logger.info(f'params:\n{params}')
   
-  deployer = Deployer(params)
-  deployer.deploy()
+  deployer = Deployer()
+  
+  if (modelName := params['model_name']) is not None:
+    deployer.deployModel(modelName)
+    
+  elif params['best_model'] is not None:
+    deployer.deployBestModel(params['target'], params['eval_metric'])
   
   logger.info('Deployment complete')
