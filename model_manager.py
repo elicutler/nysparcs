@@ -7,17 +7,19 @@ import re
 import torch
 import pickle
 
+from overrides import EnforceOverrides, overrides, final
 from artifacts_io_handler import ArtifactsIOHandler
 
 logger = logging.getLogger(__name__)
 
 
-class Deployer:
+class ModelManager:
   
   def __init__(self):
+    self.params = params.copy()
     self.artifactsIOHandler = ArtifactsIOHandler()
     
-  def deployModel(self, modelName) -> None:
+  def loadModel(self, modelName) -> None:
     
     meta, artifacts = self.artifactsIOHandler.load(modelName)
     modelPathDashes = re.sub('[/\.]', '-', meta['artifacts_path'])
@@ -33,12 +35,6 @@ class Deployer:
       
     breakpoint()
     
-    model.deploy(1, 'local', endpoint_name=modelPathDashes)
-    
-#     deploy(initial_instance_count, instance_type, accelerator_type=None, 
-#            endpoint_name=None, update_endpoint=False, tags=None, kms_key=None, 
-#            wait=True, data_capture_config=None)
-# instance_type: 'ml.t2.medium'
   
   def deployBestModel(self, target, evalMetric) -> None:
     pass
@@ -96,7 +92,7 @@ class Deployer:
       f'Model {self.params["model_name"]} not found among models:'
       f' {inRangeModels}'
     )
-    assert len(matchingModelPaths) < 2, (
+    assert not len(matchingModelPaths) > 1, (
       f'Multiple models found matching name {self.params["model_name"]}:'
       f'{matchingModelPaths}'
     )
