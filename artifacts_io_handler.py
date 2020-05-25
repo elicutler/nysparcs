@@ -29,15 +29,14 @@ class ArtifactsIOHandler(EnforceOverrides):
   s3ArtifactsPath = s3BucketPath + 'nysparcs/' + localArtifactsPath
   
   def save(self, artifactsMessage) -> None:
-    modelPathLocal = self._saveToLocal(artifactsMessage)
-    self._saveToS3(modelPathLocal)
+    artifactsPathLocal = self._saveToLocal(artifactsMessage)
+    self._saveToS3(artifactsPathLocal)
     
-  def load(self, modelName) -> ArtifactsMessage:
-    modelPathLocal = self._loadFromS3(modelName)
-    artifactsMessage = self._loadFromLocal(modelPathLocal)
+  def load(self, artifactsName) -> ArtifactsMessage:
+    artifactsPathLocal = self._loadFromS3(artifactsName)
+    artifactsMessage = self._loadFromLocal(artifactsPathLocal)
     return artifactsMessage
   
-    
   def _saveToLocal(self, artifactsMessage) -> str:
     '''
     Save artifacts locally and return path
@@ -51,24 +50,24 @@ class ArtifactsIOHandler(EnforceOverrides):
       pathlib.os.makedirs(parentPath)
       
     if modelType == 'pytorch':
-      modelPath = parentPath + f'{modelName}_{nowTimestampStr()}.pt'
-      torch.save(artifactsMessage, modelPath)
+      artifactsPath = parentPath + f'{modelName}_{nowTimestampStr()}.pt'
+      torch.save(artifactsMessage, artifactsPath)
       
     elif modelType == 'sklearn':
-      modelPath = parentPath + f'{modelName}_{nowTimestampStr()}.sk'
-      with open(modelPath, 'wb') as file:
+      artifactsPath = parentPath + f'{modelName}_{nowTimestampStr()}.sk'
+      with open(artifactsPath, 'wb') as file:
         pickle.dump(artifactsMessage, file, protocol=5)
         
-    logger.info(f'Model artifact saved to local file: {modelPath}')
-    return modelPath
+    logger.info(f'Model artifact saved to local file: {artifactsPath}')
+    return artifactsPath
   
-  def _saveToS3(self, modelPathLocalStr) -> None:
-    modelPathLocal = pathlib.Path(modelPathLocalStr)
-    s3Path = self.s3BucketPath + str(modelPathLocal.parent)
-    S3Uploader.upload(modelPathLocalStr, s3Path)
+  def _saveToS3(self, artifactsPathLocalStr) -> None:
+    artifactsPathLocal = pathlib.Path(artifactsPathLocalStr)
+    s3Path = self.s3BucketPath + str(artifactsPathLocal.parent)
+    S3Uploader.upload(artifactsPathLocalStr, s3Path)
     logger.info(
       'Model artifact saved to s3:'
-      f' {s3Path}/{modelPathLocal.stem}{modelPathLocal.suffix}'
+      f' {s3Path}/{artifactsPathLocal.stem}{artifactsPathLocal.suffix}'
     )
     
   def _loadFromS3(self, modelName) -> str:
@@ -94,6 +93,15 @@ class ArtifactsIOHandler(EnforceOverrides):
       f'Downloaded artifact from {artifactsPathS3} to {artifactsPathLocal}'
     )
     return artifactsPathLocal
+  
+  def _loadFromLocal(self, artifactsPathLocalStr) -> ArtifactsMessage:
+    artifactsPath = pathlib.Path(artifactsPathLocalStr)
+    
+    if artifactsPath.suffix == '.pt':
+      return torch.load(artifactsPath)
+    
+    elif artifactsPath.suffix = '.sk':
+      breakpoint()
     
 
     
@@ -137,65 +145,65 @@ class ArtifactsIOHandler(EnforceOverrides):
 #     if returnModelPath:
 #       return modelPath
     
-  @final
-  def _localLoadTorch(self, modelFile=None) -> OrderedDict:
+#   @final
+#   def _localLoadTorch(self, modelFile=None) -> OrderedDict:
     
-    artifactsDir = pathlib.Path('artifacts/pytorch/')
-    modelName = self.params['pytorch_model']
+#     artifactsDir = pathlib.Path('artifacts/pytorch/')
+#     modelName = self.params['pytorch_model']
     
-    if self.params['load_latest_state_dict'] and modelFile is None:
+#     if self.params['load_latest_state_dict'] and modelFile is None:
       
-      if (
-        modelName not in (artifactsDirContents := pathlib.os.listdir(artifactsDir))
-      ):
-        logger.warning(f'No previous artifacts found for {modelName=}')
-        return
+#       if (
+#         modelName not in (artifactsDirContents := pathlib.os.listdir(artifactsDir))
+#       ):
+#         logger.warning(f'No previous artifacts found for {modelName=}')
+#         return
       
-      else:
-        artifacts = [
-          a for a in pathlib.os.listdir(artifactsDir/modelName)
-          if a.startswith(modelName)
-        ]
+#       else:
+#         artifacts = [
+#           a for a in pathlib.os.listdir(artifactsDir/modelName)
+#           if a.startswith(modelName)
+#         ]
         
-        if len(artifacts) == 0:
-          logger.warning(f'No previous artifacts found for {modelName=}')
-          return
-        else:
-          artifacts.sort(reverse=True)
+#         if len(artifacts) == 0:
+#           logger.warning(f'No previous artifacts found for {modelName=}')
+#           return
+#         else:
+#           artifacts.sort(reverse=True)
         
-    else:
-      targetModel = self.params['load_state_dict'] if modelFile is None else modelFile
-      artifacts = [
-        a for a in pathlib.os.listdir(artifactsDir/modelName)
-        if (
-          re.sub('\.pt|\.pth', '', targetModel) 
-          == re.sub('\.pt|\.pth', '', a)
-        )
-      ]
-      assert len(artifacts) > 0, f'{targetModel=} not found'
-      assert len(artifacts) < 2, f'multiple artifacts found for {targetModel=}'
+#     else:
+#       targetModel = self.params['load_state_dict'] if modelFile is None else modelFile
+#       artifacts = [
+#         a for a in pathlib.os.listdir(artifactsDir/modelName)
+#         if (
+#           re.sub('\.pt|\.pth', '', targetModel) 
+#           == re.sub('\.pt|\.pth', '', a)
+#         )
+#       ]
+#       assert len(artifacts) > 0, f'{targetModel=} not found'
+#       assert len(artifacts) < 2, f'multiple artifacts found for {targetModel=}'
       
-    artifactsPath = artifactsDir/modelName/artifacts[0]
-    logger.info(f'Loading model artifacts from local path: {artifactsPath}')
-    return torch.load(artifactsPath)
+#     artifactsPath = artifactsDir/modelName/artifacts[0]
+#     logger.info(f'Loading model artifacts from local path: {artifactsPath}')
+#     return torch.load(artifactsPath)
 
-class LocalArtifactsIOHandler(ArtifactsIOHandler):
+# class LocalArtifactsIOHandler(ArtifactsIOHandler):
   
-  @overrides
-  def __init__(self, params):
-    super().__init__(params)
-    
 #   @overrides
-  def saveTorch(self, artifacts) -> None:
-    self._localSaveTorch(artifacts)
+#   def __init__(self, params):
+#     super().__init__(params)
     
-#   @overrides
-  def loadTorch(self) -> OrderedDict:
-    return self._localLoadTorch()
+# #   @overrides
+#   def saveTorch(self, artifacts) -> None:
+#     self._localSaveTorch(artifacts)
     
-#   @overrides
-  def saveSKLearn(self, artifacts) -> None:
-    self._localSaveSKLearn(artifacts)    
+# #   @overrides
+#   def loadTorch(self) -> OrderedDict:
+#     return self._localLoadTorch()
+    
+# #   @overrides
+#   def saveSKLearn(self, artifacts) -> None:
+#     self._localSaveSKLearn(artifacts)    
 
 
 # class S3ArtifactsIOHandler(ArtifactsIOHandler):
