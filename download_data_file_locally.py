@@ -13,9 +13,12 @@ logger = logging.getLogger(__name__)
 
 
 def downloadDataFileLocally() -> None:
+  '''
+  Download the dataset from s3 to local.
+  '''
   fileName = 'Hospital_Inpatient_Discharges__SPARCS_De-Identified___2009.csv'
-  s3Path = pathlib.Path(f's3://{S3_BUCKET}/{fileName}')
   localDir = 'data/'
+  s3Path = pathlib.Path(f's3://{S3_BUCKET}/{localDir}/{fileName}')
   
   if not pathlib.os.path.exists(f'{localDir}/{fileName}'):
     S3Downloader.download(s3Path, localDir)
