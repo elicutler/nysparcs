@@ -6,7 +6,7 @@ import json
 
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
-from constats import TARGET_OPTIONS
+from constants import TARGET_OPTIONS
 
 logger = logging.getLogger(__name__)
 

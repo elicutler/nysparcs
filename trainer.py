@@ -4,7 +4,6 @@ import logging
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch_models
 import pandas as pd
 import numpy as np
 
@@ -18,6 +17,7 @@ from sklearn.metrics import mean_absolute_error, median_absolute_error
 from data_reader import DataReaderFactory
 from data_processor import DataProcessor
 from sklearn_processor import SKLearnProcessor
+from torch_models import ModelArchitectureFactory
 from artifacts_io_handler import ArtifactsIOHandler, ArtifactsMessage
 from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
@@ -93,6 +93,7 @@ class TorchTrainer(Trainer):
   def __init__(self, params):
     super().__init__(params)
     self.sklearnProcessor = SKLearnProcessor(params)
+    self.modelArchitecture = ModelArchitectureFactory.make(params)
     self.model = None
     self.optimizer = None
   
@@ -130,8 +131,9 @@ class TorchTrainer(Trainer):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     logger.info(f'Training on {device=}')
     
-    self.model = self._loadModel(sklearnProcessor.featureNames).to(device)
+    self.model = self.modelArchitecture(sklearnProcessor.featureNames).to(device)
     self.optimizer = optim.Adam(self.model.parameters())
+    breakpoint()
       
     lossCriterion = self._makeLossCriterion()
     
@@ -221,27 +223,6 @@ class TorchTrainer(Trainer):
     message = ArtifactsMessage(meta, artifacts)
     self.artifactsIOHandler.save(message)
 
-  def _loadModel(self, featureNames) -> T.Type[nn.Module]:
-    
-    if (modelName := self.params['pytorch_model']) == 'CatEmbedNet':
-      modelClass = torch_models.CatEmbedNet
-      
-    else:
-      raise ValueError(f'{modelClass=} not recognized')
-      
-    return modelClass(featureNames)
-  
-#   def _loadStateDicts(self) -> None:
-    
-#     if (checkpoint := self.artifactsIOHandler.loadTorch()) is not None:
-      
-#       self._validateInputColumns(checkpoint['input_col_types'])
-#       self.model.load_state_dict(checkpoint['model_state_dict'])
-#       self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-      
-#     else:
-#       logger.warning('No state dict loaded')
-      
   def _makeLossCriterion(self) -> None:
     
     if (targetType := self.params['target_type']) == 'binary':
@@ -254,6 +235,17 @@ class TorchTrainer(Trainer):
       raise ValueError(f'{targetType=} not recognized')
       
     return lossType(reduction='sum')
+  
+#   def _loadStateDicts(self) -> None:
+    
+#     if (checkpoint := self.artifactsIOHandler.loadTorch()) is not None:
+      
+#       self._validateInputColumns(checkpoint['input_col_types'])
+#       self.model.load_state_dict(checkpoint['model_state_dict'])
+#       self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+      
+#     else:
+#       logger.warning('No state dict loaded')
   
 #   def _validateInputColumns(self, loadedInputColTypes) -> None:
 #     assert (self.inputColTypes.index == loadedInputColTypes.index).all(), (

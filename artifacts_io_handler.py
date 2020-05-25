@@ -46,16 +46,19 @@ class ArtifactsIOHandler(EnforceOverrides):
     modelType = artifactsMessage.meta['model_type']
     modelName = artifactsMessage.meta['model_name']
     parentPath = self.localArtifactsPath + f'{target}/{modelType}/{modelName}/'
+    artifactsPathNoSuffix = parentPath + f'{modelName}_{nowTimestampStr()}'
     
     if not pathlib.os.path.exists(parentPath):
       pathlib.os.makedirs(parentPath)
       
     if modelType == 'pytorch':
-      artifactsPath = parentPath + f'{modelName}_{nowTimestampStr()}.pt'
+      artifactsPath = artifactsPathNoSuffix + '.pt'
+      artifactsMessage.meta['artifacts_path'] = artifactsPath
       torch.save(artifactsMessage, artifactsPath)
       
     elif modelType == 'sklearn':
-      artifactsPath = parentPath + f'{modelName}_{nowTimestampStr()}.sk'
+      artifactsPath = artifactsPathNoSuffix + '.sk'
+      artifactsMessage.meta['artifacts_path'] = artifactsPath
       with open(artifactsPath, 'wb') as file:
         pickle.dump(artifactsMessage, file, protocol=5)
         

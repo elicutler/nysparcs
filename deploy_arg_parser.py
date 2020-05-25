@@ -20,7 +20,7 @@ class DeployArgParser:
       )
     )
     self.parser.add_argument(
-      '--best_model', action=store_true, help=(
+      '--best_model', action='store_true', help=(
         'Deploy best model. If specified, must also provide target and eval_metric.'
       )
     )

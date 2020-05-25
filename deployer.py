@@ -20,7 +20,25 @@ class Deployer:
   def deployModel(self, modelName) -> None:
     
     meta, artifacts = self.artifactsIOHandler.load(modelName)
+    modelPathDashes = re.sub('[/\.]', '-', meta['artifacts_path'])
+    
+    if (modelType := meta['model_type']) == 'sklearn':
+      model = artifacts['model_pipeline']
+      
+    elif modelType == 'pytorch':
+      breakpoint()
+    
+    else:
+      raise ValueError(f'{modelType=} not recognized')
+      
     breakpoint()
+    
+    model.deploy(1, 'local', endpoint_name=modelPathDashes)
+    
+#     deploy(initial_instance_count, instance_type, accelerator_type=None, 
+#            endpoint_name=None, update_endpoint=False, tags=None, kms_key=None, 
+#            wait=True, data_capture_config=None)
+# instance_type: 'ml.t2.medium'
   
   def deployBestModel(self, target, evalMetric) -> None:
     pass

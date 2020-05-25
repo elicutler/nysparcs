@@ -81,4 +81,16 @@ class CatEmbedNet(nn.Module):
       [layer.out_features for layer in self.catEmbeddingLayers.values()]
     )
     return numFeatures + catFeatures
+  
+  
+class ModelArchitectureFactory:
+  
+  @staticmethod
+  def make(params) -> T.Type[nn.Module]:
+  
+    if (architecture := params['pytorch_model']) == 'CatEmbedNet':
+      return CatEmbedNet
+
+    else:
+      raise ValueError(f'{architecture=} not recognized')
 
