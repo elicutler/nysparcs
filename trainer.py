@@ -34,7 +34,9 @@ class Trainer(EnforceOverrides):
   def __init__(self, params):
     self.params = params.copy()
     self.dataReader = DataReaderFactory.make(params)
-    self.dataProcessor = DataProcessorFactory.make('train', params)
+    self.dataProcessor = DataProcessorFactory.make(
+      params['features'], targetCol=params['target']
+    )
     self.artifactsIOHandler = ArtifactsIOHandler()
     
     self.inputColTypes = None

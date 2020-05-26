@@ -19,7 +19,13 @@ class Predictor(EnforceOverrides):
   def __init__(self, params, artifactsMessage):
     self.params = params.copy()
     self.artifactsMessage = artifactsMessage
-    self.dataProcessor = DataProcessorFactory.make('train', params) #change to predict after debugging
+    
+    featureCols = (
+      self.artifactsMessage.meta['input_col_types']
+      .drop(self.artifactsMessage.meta['target'])
+      .index
+    )
+    self.dataProcessor = DataProcessorFactory.make(featureCols) 
     
   @abstractmethod
   def predict(self):
@@ -52,9 +58,9 @@ class PytorchPredictor(Predictor):
     instances = self._parseInstances()
     rawDF = pd.DataFrame.from_dict(instances, orient='index')
     self.dataProcessor.loadDF(rawDF)
-    breakpoint()
     self.dataProcessor.processDF()
-    processedDF = self.dataProcessor.getProcessedDF()    
+    processedDF = self.dataProcessor.getFeatureDF()    
+    breakpoint()
     
       
 class PredictorFactory:

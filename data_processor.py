@@ -15,9 +15,7 @@ logger = logging.getLogger(__name__)
 class DataProcessor(EnforceOverrides):
   
   @abstractmethod
-  def __init__(self, params):
-    self.params = params.copy()
-    
+  def __init__(self):
     self.df = None
     self.dfIsProcessed = False
     
@@ -28,13 +26,40 @@ class DataProcessor(EnforceOverrides):
     if self.dfIsProcessed is True:
       self.dfIsProcessed = False
       
-  @abstractmethod
+  @final
   def processDF(self) -> None:
-    pass
+    logger.info('Processing data')
+    
+    if self.dfIsProcessed:
+      logger.warning('DF has already been processed. Nothing to do.')
+      return
+    
+    assert self.df is not None, 'First call self.loadDF()'
+    
+    finalColumns = (
+      [self.targetCol, *self.featureCols] if self.trainingMode 
+      else self.featureCols
+    )
+    
+    self.df.columns = self._sanitizeColNames()
+    if 'length_of_stay' in finalColumns: self._processLOS()
+    self._objToFloatCols()
+    self._floatToIntCols()
+    self._mergeCodeAndDescCols()
+    self._sanitizeStrCols()
+    if 'prior_auth_dispo' in finalColumns: self._makePriorAuthDispo()
+    self._removeUnusedCols()
+    self._nullifyInvalidNumericCols()
+    if self.trainingMode: self._filterNumericOutliers()
+    if self.trainingMode: self.df.reset_index(drop=True, inplace=True)
+    
+    self.dfIsProcessed = True
+    
+  @final
+  def _sanitizeColNames(self) -> T.List[str]:
+    return [self._sanitizeString(c) for c in self.df.columns]
   
-  def _sanitizeColNames(self,colNames) -> T.List[str]:
-    return [self._sanitizeString(c) for c in colNames]
-  
+  @final
   def _sanitizeString(self, string) -> str:
     s = string.lower()
     s = re.sub('^\W+', '', s)
@@ -42,6 +67,7 @@ class DataProcessor(EnforceOverrides):
     s = re.sub('\W+', '_', s)
     return s
   
+  @final
   def _processLOS(self) -> None:
     losCol = self.df['length_of_stay'].copy()
     losCol.loc[losCol == '120 +'] = np.nan
@@ -49,6 +75,7 @@ class DataProcessor(EnforceOverrides):
     losCol.loc[losCol < 0] = pd.NA
     self.df['length_of_stay'] = losCol
     
+  @final
   def _objToFloatCols(self) -> None:
     objToFloatCols = ['total_charges', 'total_costs', 'birth_weight']
     
@@ -57,6 +84,7 @@ class DataProcessor(EnforceOverrides):
         self.df[c] = self.df[c].astype(float)
         logger.info(f'Col \'{c}\' converted from obj to float')
   
+  @final
   def _floatToIntCols(self) -> None:
     floatCols = self.df.select_dtypes(include=['float']).columns
     
@@ -67,6 +95,7 @@ class DataProcessor(EnforceOverrides):
       except TypeError as e:
         logger.info(f'Failed to convert col \'{c}\' from float to int')
   
+  @final
   def _objToStrCols(self) -> None:
     objCols = self.df.select_dtypes(include=['object']).columns
     
@@ -77,6 +106,7 @@ class DataProcessor(EnforceOverrides):
       except TypeError as e:
         logger.info(f'Failed to convert col \'{c}\' from object to string')
   
+  @final
   def _sanitizeStrCols(self) -> None:
     strCols = self.df.select_dtypes(include=['object']).columns
     
@@ -85,6 +115,7 @@ class DataProcessor(EnforceOverrides):
         lambda x: self._sanitizeString(x) if isinstance(x, str) else x
       )
       
+  @final
   def _ynToBoolCols(self) -> None:
     # sklearn fails with bool cols
     ynCols = ['abortion_edit_indicator', 'emergency_department_indicator']
@@ -99,6 +130,7 @@ class DataProcessor(EnforceOverrides):
         logger.info(f'Failed to convert col \'{c}\' from object to bool')
 
       
+  @final
   def _mergeCodeAndDescCols(self) -> None:
     colStems = ['ccs_diagnosis', 'ccs_procedure']
     
@@ -112,6 +144,7 @@ class DataProcessor(EnforceOverrides):
       codeDescMergedMap = codeDescMap.set_index(code)['merged']
       self.df[c] = self.df[code].map(codeDescMergedMap)
   
+  @final
   def _makePriorAuthDispo(self) -> None:
     priorAuthDispos = [ 
       'home_w_home_health_services',
@@ -128,18 +161,25 @@ class DataProcessor(EnforceOverrides):
       )
     )
   
+  @final
   def _removeUnusedCols(self) -> None:
-    keepCols = ['train_val', self.params['target']] + self.params['features']
+#     keepCols = ['train_val', self.params['target']] + self.params['features']
+    keepCols = (
+      ['train_val', self.targetCol, *self.featureCols] if self.trainingMode
+      else self.featureCols
+    )
     logger.info(
       f'Removing cols: {[c for c in self.df.columns if c not in keepCols]}'
     )
     self.df = self.df[keepCols]
   
+  @final
   def _nullifyInvalidNumericCols(self) -> None:
     continuousCols = self.df.select_dtypes(include=['number']).columns
     for c in continuousCols:
       self.df.loc[self.df[c] < 0, c] = np.nan
     
+  @final
   def _filterNumericOutliers(self, quantile=0.99) -> None:
     numCols = [
       c for c in self.df.columns 
@@ -161,38 +201,14 @@ class DataProcessor(EnforceOverrides):
       )
       
   
-  
 class TrainDataProcessor(DataProcessor):
   
   @overrides
-  def __init__(self, params):
-    super().__init__(params)
-    
-  @overrides  
-  def processDF(self) -> None:
-    logger.info('Processing data')
-    
-    if self.dfIsProcessed:
-      logger.warning('DF has already been processed. Nothing to do.')
-      return
-    
-    assert self.df is not None, 'First call self.loadDF()'
-    
-    finalColumns = [self.params['target']] + self.params['features']
-    
-    self.df.columns = self._sanitizeColNames(self.df.columns)
-    self._processLOS()
-    self._objToFloatCols()
-    self._floatToIntCols()
-    self._mergeCodeAndDescCols()
-    self._sanitizeStrCols()
-    self._makePriorAuthDispo()
-    self._removeUnusedCols()
-    self._nullifyInvalidNumericCols()
-    self._filterNumericOutliers()
-    self.df.reset_index(drop=True, inplace=True)
-    
-    self.dfIsProcessed = True
+  def __init__(self, featureCols, targetCol):
+    super().__init__()
+    self.featureCols = featureCols
+    self.targetCol = targetCol
+    self.trainingMode = True
     
   def getTrainValDFs(self) -> T.Tuple[pd.DataFrame]:
     
@@ -209,19 +225,25 @@ class TrainDataProcessor(DataProcessor):
     return trainDF, valDF
   
   
+class PredictDataProcessor(DataProcessor):
+  
+  @overrides
+  def __init__(self, featureCols):
+    super().__init__()
+    self.featureCols = featureCols
+    self.trainingMode = False
+    
+  def getFeatureDF(self) -> pd.DataFrame:
+    return self.df.copy()
+  
 class DataProcessorFactory:
   
   @staticmethod
-  def make(type_, params) -> T.Type[DataProcessor]:
+  def make(featureCols, targetCol=None) -> T.Type[DataProcessor]:
     
-    if type_ == 'train':
-      Processor_ = TrainDataProcessor
-    
-    elif type_ == 'predict':
-      Processor_ = PredictDataProcessor
+    if targetCol is not None:
+      return TrainDataProcessor(featureCols, targetCol)
     
     else:
-      raise ValueError(f'{type_=} not recognized')
-      
-    return Processor_(params)
-  
+      return PredictDataProcessor(featureCols)
+
