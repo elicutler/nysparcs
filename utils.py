@@ -3,6 +3,7 @@ import typing as T
 import logging
 import multiprocessing
 import re
+import torch
 
 from collections.abc import Sequence
 from datetime import datetime
@@ -11,8 +12,12 @@ from pytz import timezone
 logger = logging.getLogger(__name__)
     
 
-def getNumCores() -> int:
-  return multiprocessing.cpu_count()
+def getNumWorkers(numWorkers) -> int:
+  return multiprocessing.cpu_count() - 1 if numWorkers == -1 else numWorkers
+
+
+def getProcessingDevice() -> str:
+  return 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 def getMinMaxIndicesOfItemInList(item, list_, startsWith=False)  -> T.Tuple[int]:
@@ -35,5 +40,7 @@ def flattenNestedSeq(seq) -> list:
 
 def nowTimestampStr() -> str:
   return datetime.now(timezone('UTC')).strftime('%Y%m%d%H%M%S%f')
+
+
 
 

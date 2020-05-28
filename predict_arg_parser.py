@@ -53,4 +53,6 @@ class PredictArgParser:
     # If loading best_model by eval_metric, must be valid metric
     if args.eval_metric is not None:
       assert args.eval_metric in EVAL_OPTIONS
+    # Need instances
+    assert args.instances is not None
 

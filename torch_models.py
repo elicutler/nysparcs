@@ -86,9 +86,9 @@ class CatEmbedNet(nn.Module):
 class ModelArchitectureFactory:
   
   @staticmethod
-  def make(params) -> T.Type[nn.Module]:
+  def make(architecture) -> T.Type[nn.Module]:
   
-    if (architecture := params['pytorch_model']) == 'CatEmbedNet':
+    if architecture == 'CatEmbedNet':
       return CatEmbedNet
 
     else:

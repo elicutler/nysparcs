@@ -21,7 +21,7 @@ from torch_models import ModelArchitectureFactory
 from artifacts_io_handler import ArtifactsIOHandler, ArtifactsMessage
 from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
-from utils import getNumCores
+from utils import getNumWorkers, getProcessingDevice
 from constants import FIXED_SEED
 from sklearn_pipelines import SKLearnPipelineMaker
 
@@ -95,7 +95,9 @@ class TorchTrainer(Trainer):
   def __init__(self, params):
     super().__init__(params)
     self.sklearnProcessor = SKLearnProcessor(params)
-    self.modelArchitecture = ModelArchitectureFactory.make(params)
+    self.modelArchitecture = (
+      ModelArchitectureFactory.make(params['pytorch_model'])
+    )
     self.model = None
     self.optimizer = None
   
@@ -113,13 +115,15 @@ class TorchTrainer(Trainer):
     self.sklearnProcessor.fit()
     sklearnProcessor = self.sklearnProcessor.get()
     
-    torchTrainDF = TorchDataset(self.params, trainDF, sklearnProcessor)
-    torchValDF = TorchDataset(self.params, valDF, sklearnProcessor)
+    torchTrainDF = TorchDataset(
+      trainDF, sklearnProcessor, target=self.params['target']
+    )
+    torchValDF = TorchDataset(
+      valDF, sklearnProcessor, target=self.params['target']
+    )
     
     batchSize = self.params['batch_size']
-    numWorkers = (
-      getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
-    )
+    numWorkers = getNumWorkers(self.params['num_workers'])
     logger.info(f'Running on {numWorkers} cores')
     
     trainLoader = DataLoader(
@@ -129,8 +133,8 @@ class TorchTrainer(Trainer):
       torchValDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
     )
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    logger.info(f'Training on {device=}')
+    device = getProcessingDevice()
+    logger.info(f'Training on {device=} with {numWorkers=}')
     
     self.model = self.modelArchitecture(sklearnProcessor.featureNames).to(device)
     self.optimizer = optim.Adam(self.model.parameters())
@@ -210,6 +214,7 @@ class TorchTrainer(Trainer):
       'model_type': 'pytorch',
       'model_name': self.params['pytorch_model'],
       'target': self.params['target'],
+      'target_type': self.params['target_type'],
       'val_range': self.params['val_range'],
       'val_perf_metrics': self.valPerformanceMetrics,
       'input_col_types': self.inputColTypes

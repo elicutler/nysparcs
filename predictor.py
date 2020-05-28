@@ -2,13 +2,21 @@
 import typing as T
 import logging
 import json
+import numpy as np
 import pandas as pd
+import torch
 
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
+from torch.utils.data import DataLoader
 from artifacts_io_handler import ArtifactsIOHandler
-from data_processor import DataProcessorFactory
 from model_manager import ModelManager
+from data_processor import DataProcessorFactory
+from torch_models import ModelArchitectureFactory
+from torch_dataset import TorchDataset
+from eval_no_grad import EvalNoGrad
+from utils import getProcessingDevice, getNumWorkers
+
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +59,9 @@ class PytorchPredictor(Predictor):
   
   def __init__(self, params, artifactsMessage):
     super().__init__(params, artifactsMessage)
+    self.modelArchitecture = (
+      ModelArchitectureFactory.make(artifactsMessage.meta['model_name'])
+    )
     
   @overrides
   def predict(self) -> dict:
@@ -60,7 +71,40 @@ class PytorchPredictor(Predictor):
     self.dataProcessor.loadDF(rawDF)
     self.dataProcessor.processDF()
     processedDF = self.dataProcessor.getFeatureDF()    
+    
+    batchSize = processedDF.shape[0]
+    numWorkers = getNumWorkers(-1)
+
+#     XArray = np.array(sklearnProcessor.transform(processedDF).todense())
+#     X = torch.from_numpy(XArray.squeeze()).float()
+
+    torchPredDF = TorchDataset(processedDF, sklearnProcessor)
+
+    predLoader = DataLoader(
+      torchPredDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
+    )
+    
+    device = getProcessingDevice()
+    logger.info(f'Predicting on {device=} with {numWorkers=}')
+    
+    sklearnProcessor = self.artifactsMessage.artifacts['sklearn_processor']
+    model = self.modelArchitecture(sklearnProcessor.featureNames).to(device)
+    model.load_state_dict(self.artifactsMessage.artifacts['model_state_dict'])
+    
+    for X in predLoader:
+    
+      with EvalNoGrad(model):
+        X = X.to(device)
+        preds = (
+          torch.sigmoid(model(X)) 
+          if self.artifactsMessage.meta['target_type'] == 'binary'
+          else model(X)
+        )
+        
     breakpoint()
+    
+    
+    
     
       
 class PredictorFactory:

@@ -22,6 +22,6 @@ class EvalNoGrad:
     self.model.train(False)
     torch.set_grad_enabled(False)
     
-  def __exit__(self, *args) -> None:
+  def __exit__(self, *_) -> None:
     self.model.train(self.prevModeTrain)
     torch.set_grad_enabled(self.prevGradEnabled)
