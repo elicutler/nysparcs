@@ -75,11 +75,8 @@ class PytorchPredictor(Predictor):
     batchSize = processedDF.shape[0]
     numWorkers = getNumWorkers(-1)
 
-#     XArray = np.array(sklearnProcessor.transform(processedDF).todense())
-#     X = torch.from_numpy(XArray.squeeze()).float()
-
+    sklearnProcessor = self.artifactsMessage.artifacts['sklearn_processor']
     torchPredDF = TorchDataset(processedDF, sklearnProcessor)
-
     predLoader = DataLoader(
       torchPredDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
     )
@@ -87,7 +84,6 @@ class PytorchPredictor(Predictor):
     device = getProcessingDevice()
     logger.info(f'Predicting on {device=} with {numWorkers=}')
     
-    sklearnProcessor = self.artifactsMessage.artifacts['sklearn_processor']
     model = self.modelArchitecture(sklearnProcessor.featureNames).to(device)
     model.load_state_dict(self.artifactsMessage.artifacts['model_state_dict'])
     
@@ -101,11 +97,9 @@ class PytorchPredictor(Predictor):
           else model(X)
         )
         
-    breakpoint()
-    
-    
-    
-    
+    predSeries = pd.Series(preds.numpy().squeeze(), index=processedDF.index)
+    return predSeries
+        
       
 class PredictorFactory:
   

@@ -10,7 +10,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import RandomizedSearchCV
 from target_encoder import TargetEncoder
-from utils import getNumCores
+from utils import getNumWorkers
 from constants import FIXED_SEED
 
 logger = logging.getLogger(__name__)
@@ -24,9 +24,7 @@ class SKLearnPipelineMaker:
     
     self.target = params['target']
     self.n_iter = params['n_iter']
-    self.n_jobs = (
-      getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
-    )
+    self.n_jobs = getNumWorkers(self.params['num_workers'])
     self.eval_metric = params['eval_metric']
     
     self.inputColTypes = None
@@ -97,4 +95,5 @@ class SKLearnPipelineMaker:
       scoring=self.eval_metric, n_jobs=self.n_jobs, random_state=FIXED_SEED,
       verbose=1
     )
+    logger.info(f'Pipeline created with {self.n_jobs=}')
     return hyperparamSearchPipe

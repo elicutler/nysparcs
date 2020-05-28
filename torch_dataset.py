@@ -27,17 +27,17 @@ class TorchDataset(Dataset):
   def __getitem__(self, idx) -> T.Union[T.Tuple[torch.Tensor], torch.Tensor]:
 
     inputDF = self._makeInputDF()
-    featureInputs = df.iloc[idx].to_frame().transpose()
+    featureInputs = inputDF.iloc[idx].to_frame().transpose()
     
     XMatrix = self.sklearnProcessor.transform(featureInputs).todense()
     XArray = np.array(XMatrix).squeeze()
     X = torch.from_numpy(XArray).float()
     
     if self.target is not None:
-      yArray = np.array(self.df[self.target].iloc[idx])
+      yArray = np.array(self.df[[self.target]].iloc[idx])
       y = torch.from_numpy(yArray).float()
       
-    return X, y if self.target is not None else X
+    return (X, y) if self.target is not None else X
     
   def _validateFeatures(self) -> None:
     inputDF = self._makeInputDF()
