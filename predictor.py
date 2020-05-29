@@ -36,7 +36,7 @@ class Predictor(EnforceOverrides):
     self.dataProcessor = DataProcessorFactory.make(featureCols) 
     
   @abstractmethod
-  def predict(self):
+  def predict(self) -> dict:
     pass
   
   @final
@@ -54,9 +54,18 @@ class Predictor(EnforceOverrides):
       
     return instances
   
+  @final
+  def _processInstances(self) -> pd.DataFrame:
+    instances = self._parseInstances()
+    rawDF = pd.DataFrame.from_dict(instances, orient='index')
+    self.dataProcessor.loadDF(rawDF)
+    self.dataProcessor.processDF()
+    return self.dataProcessor.getFeatureDF()    
+  
   
 class PytorchPredictor(Predictor):
   
+  @overrides
   def __init__(self, params, artifactsMessage):
     super().__init__(params, artifactsMessage)
     self.modelArchitecture = (
@@ -66,11 +75,7 @@ class PytorchPredictor(Predictor):
   @overrides
   def predict(self) -> dict:
     
-    instances = self._parseInstances()
-    rawDF = pd.DataFrame.from_dict(instances, orient='index')
-    self.dataProcessor.loadDF(rawDF)
-    self.dataProcessor.processDF()
-    processedDF = self.dataProcessor.getFeatureDF()    
+    processedDF = self._processInstances()
     
     batchSize = processedDF.shape[0]
     numWorkers = getNumWorkers(-1)
@@ -98,7 +103,24 @@ class PytorchPredictor(Predictor):
         )
         
     predSeries = pd.Series(preds.numpy().squeeze(), index=processedDF.index)
-    return predSeries
+    return predSeries.to_dict()
+  
+  
+class SKLearnPredictor(Predictor):
+  
+  @overrides
+  def __init__(self, params, artifactsMessage):
+    super().__init__(params, artifactsMessage)
+    
+  @overrides
+  def predict(self) -> dict:
+    
+    processedDF = self._processInstances()
+    pipeline = self.artifactsMessage.artifacts['model_pipeline']
+    preds = pipeline.predict(processedDF)
+    
+    predSeries = pd.Series(preds, index=processedDF.index)
+    return predSeries.to_dict()
         
       
 class PredictorFactory:

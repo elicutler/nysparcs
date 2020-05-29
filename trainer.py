@@ -240,27 +240,6 @@ class TorchTrainer(Trainer):
       
     return lossType(reduction='sum')
   
-#   def _loadStateDicts(self) -> None:
-    
-#     if (checkpoint := self.artifactsIOHandler.loadTorch()) is not None:
-      
-#       self._validateInputColumns(checkpoint['input_col_types'])
-#       self.model.load_state_dict(checkpoint['model_state_dict'])
-#       self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-      
-#     else:
-#       logger.warning('No state dict loaded')
-  
-#   def _validateInputColumns(self, loadedInputColTypes) -> None:
-#     assert (self.inputColTypes.index == loadedInputColTypes.index).all(), (
-#       f'Input column names do not match:\n{self.inputColTypes=}'
-#       f'\n{loadedInputColTypes=}'
-#     )
-#     assert (self.inputColTypes.values == loadedInputColTypes.values).all(), (
-#       f'Input column data types do not match:\n{self.inputColTypes=}'
-#       f'\n{loadedInputColTypes=}'
-#     )
-    
     
 class SKLearnTrainer(Trainer):
   
