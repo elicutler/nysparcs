@@ -65,7 +65,7 @@
       "total_charges"
     ],
     "cat_encoder_strat": "target",
-    "sklearn_model": "gradient_boosting_classifier",
+    "sklearn_model": "GradientBoostingClassifier",
     "local_data_path": "data/Hospital_Inpatient_Discharges__SPARCS_De-Identified___2009.csv",
     "eval_metric": "roc_auc",
     "n_iter": 1,
@@ -89,7 +89,7 @@
       "total_charges"
     ],
     "cat_encoder_strat": "target",
-    "sklearn_model": "gradient_boosting_classifier",
+    "sklearn_model": "GradientBoostingClassifier",
     "socrata_data_key": "q6hk-esrj",
     "eval_metric": "roc_auc",
     "n_iter": 1,
