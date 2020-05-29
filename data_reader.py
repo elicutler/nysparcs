@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 class DataReader(EnforceOverrides):
   
-  def __init__(self, params):
-    self.params = params.copy()
+  def __init__(self, trainParams):
+    self.trainParams = trainParams.copy()
   
   @abstractmethod
   def read(self) -> pd.DataFrame:
@@ -29,29 +29,29 @@ class DataReader(EnforceOverrides):
 
 class LocalOrS3DataReader(DataReader):
   
-  def __init__(self, params):
-    super().__init__(params)
+  def __init__(self, trainParams):
+    super().__init__(trainParams)
     
-    self.dataLoc = 'local' if self.params['local_data_path'] is not None else 's3'
+    self.dataLoc = 'local' if self.trainParams['local_data_path'] is not None else 's3'
     
     if self.dataLoc == 'local':
-      self.dataPath = Path(params['local_data_path'])
+      self.dataPath = Path(trainParams['local_data_path'])
     
     elif self.dataLoc == 's3':
       s3Prefix = Path(f's3://{S3_BUCKET}/nysparcs/')
-      self.dataPath = s3Prefix/params['s3_data_path']
+      self.dataPath = s3Prefix/trainParams['s3_data_path']
     
   @overrides
   def read(self) -> pd.DataFrame:
     logger.info(f'Reading data from {self.dataLoc} path...')
     
-    trainStart, trainEnd = self.params['train_range']
+    trainStart, trainEnd = self.trainParams['train_range']
     trainDF = self._readNumRowsFromStartRow(
       trainStart, trainEnd-trainStart
     )
     trainDF['train_val'] = 'train'
     
-    valStart, valEnd = self.params['val_range']
+    valStart, valEnd = self.trainParams['val_range']
     valDF = self._readNumRowsFromStartRow(
       valStart, valEnd-valStart
     )
@@ -73,21 +73,21 @@ class LocalOrS3DataReader(DataReader):
 
 class SocrataDataReader(DataReader):
   
-  def __init__(self, params):
-    super().__init__(params)
+  def __init__(self, trainParams):
+    super().__init__(trainParams)
     self.socrataConn = self._establishSocrataConn()
     
   @overrides
   def read(self) -> pd.DataFrame:
     logger.info('Reading data from socrata...')
     
-    trainStart, trainEnd = self.params['train_range']
+    trainStart, trainEnd = self.trainParams['train_range']
     trainDF = self._readNumRowsFromStartRow(
       trainStart, trainEnd-trainStart
     )
     trainDF['train_val'] = 'train'
     
-    valStart, valEnd = self.params['val_range']
+    valStart, valEnd = self.trainParams['val_range']
     valDF = self._readNumRowsFromStartRow(
       valStart, valEnd-valStart
     )
@@ -99,7 +99,7 @@ class SocrataDataReader(DataReader):
   @overrides
   def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
     
-    socrataDataKey = self.params['socrata_data_key']
+    socrataDataKey = self.trainParams['socrata_data_key']
     dataRecs = self.socrataConn.get(
       socrataDataKey, order=':id', offset=startRow, limit=numRows
     )
@@ -115,19 +115,19 @@ class SocrataDataReader(DataReader):
 class DataReaderFactory:
   
   @staticmethod
-  def make(params) -> T.Type[DataReader]:
+  def make(trainParams) -> T.Type[DataReader]:
     
-    if params['local_data_path'] is not None:
+    if trainParams['local_data_path'] is not None:
       dataLoc = 'local'
       
-    elif params['socrata_data_key'] is not None:
+    elif trainParams['socrata_data_key'] is not None:
       dataLoc = 'socrata'
       
-    elif params['s3_data_path'] is not None:
+    elif trainParams['s3_data_path'] is not None:
       dataLoc = 's3'
       
     else:
-      raise Error('data location cannot be inferred from params')
+      raise Error('data location cannot be inferred from trainParams')
       
     if dataLoc in ['local', 's3']:
       dataReader = LocalOrS3DataReader
@@ -138,4 +138,4 @@ class DataReaderFactory:
     else:
       raise ValueError(f'{dataLoc=} not recognized')
       
-    return dataReader(params)
+    return dataReader(trainParams)

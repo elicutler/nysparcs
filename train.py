@@ -17,14 +17,11 @@ if __name__ == '__main__':
   logger.info('Begin training...')
 
   parser = TrainArgParser()
-  params = SafeDict.fromNamespace(parser.parseArgs())
-#   params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'torch_test_local']))
-#   params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'torch_test_cloud']))
-#   params = SafeDict.fromNamespace(parser.parseArgs(['--run_id', 'sklearn_test_local']))
+  trainParams = SafeDict.fromNamespace(parser.parseArgs())
   
-  logger.info(f'params:\n{params}')
+  logger.info(f'trainParams:\n{trainParams}')
   
-  trainer = TrainerFactory.make(params)
+  trainer = TrainerFactory.make(trainParams)
   trainer.train()
   trainer.saveModel()
   

@@ -18,14 +18,14 @@ logger = logging.getLogger(__name__)
 
 class SKLearnPipelineMaker:
   
-  def __init__(self, params):
-    self.params = params.copy()
+  def __init__(self, trainParams):
+    self.trainParams = trainParams.copy()
     self.catEncoder = self._getCatEncoder()
     
-    self.target = params['target']
-    self.n_iter = params['n_iter']
-    self.n_jobs = getNumWorkers(self.params['num_workers'])
-    self.eval_metric = params['eval_metric']
+    self.target = trainParams['target']
+    self.n_iter = trainParams['n_iter']
+    self.n_jobs = getNumWorkers(self.trainParams['num_workers'])
+    self.eval_metric = trainParams['eval_metric']
     
     self.inputColTypes = None
     self.catFeatureCols = None
@@ -57,7 +57,9 @@ class SKLearnPipelineMaker:
       ('cat_pipe', catPipe, self.catFeatureCols)
     ])
     
-    if (modelType := self.params['sklearn_model']) == 'gradient_boosting_classifier':
+    modelType = self.trainParams['sklearn_model']
+    
+    if modelType == 'gradient_boosting_classifier':
       return self._makeGBCEstimator(processorPipe)
     
     else:
@@ -65,7 +67,9 @@ class SKLearnPipelineMaker:
 
   def _getCatEncoder(self) -> T.Union[TargetEncoder, OneHotEncoder]:
 
-    if (catEncoderStrat := self.params['cat_encoder_strat']) == 'target':
+    catEncoderStrat := self.trainParams['cat_encoder_strat']
+      
+    if catEncoderStrat == 'target':
       return TargetEncoder(priorFrac=0.1)
 
     elif catEncoderStrat == 'one_hot':

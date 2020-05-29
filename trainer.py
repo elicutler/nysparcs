@@ -31,11 +31,11 @@ logger = logging.getLogger(__name__)
 class Trainer(EnforceOverrides):
   
   @abstractmethod
-  def __init__(self, params):
-    self.params = params.copy()
-    self.dataReader = DataReaderFactory.make(params)
+  def __init__(self, trainParams):
+    self.trainParams = trainParams.copy()
+    self.dataReader = DataReaderFactory.make(trainParams)
     self.dataProcessor = DataProcessorFactory.make(
-      params['features'], targetCol=params['target']
+      trainParams['features'], targetCol=trainParams['target']
     )
     self.artifactsIOHandler = ArtifactsIOHandler()
     
@@ -53,7 +53,7 @@ class Trainer(EnforceOverrides):
   @final
   def _calcPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
     
-    if (targetType := self.params['target_type']) == 'binary':
+    if (targetType := self.trainParams['target_type']) == 'binary':
       perfCalculator = self._calcBinaryPerformanceMetrics
     
     elif targetType == 'regression':
@@ -92,11 +92,11 @@ class Trainer(EnforceOverrides):
 class TorchTrainer(Trainer):
 
   @overrides
-  def __init__(self, params):
-    super().__init__(params)
-    self.sklearnProcessor = SKLearnProcessor(params)
+  def __init__(self, trainParams):
+    super().__init__(trainParams)
+    self.sklearnProcessor = SKLearnProcessor(trainParams)
     self.modelArchitecture = (
-      ModelArchitectureFactory.make(params['pytorch_model'])
+      ModelArchitectureFactory.make(trainParams['pytorch_model'])
     )
     self.model = None
     self.optimizer = None
@@ -116,14 +116,14 @@ class TorchTrainer(Trainer):
     sklearnProcessor = self.sklearnProcessor.get()
     
     torchTrainDF = TorchDataset(
-      trainDF, sklearnProcessor, target=self.params['target']
+      trainDF, sklearnProcessor, target=self.trainParams['target']
     )
     torchValDF = TorchDataset(
-      valDF, sklearnProcessor, target=self.params['target']
+      valDF, sklearnProcessor, target=self.trainParams['target']
     )
     
-    batchSize = self.params['batch_size']
-    numWorkers = getNumWorkers(self.params['num_workers'])
+    batchSize = self.trainParams['batch_size']
+    numWorkers = getNumWorkers(self.trainParams['num_workers'])
     logger.info(f'Running on {numWorkers} cores')
     
     trainLoader = DataLoader(
@@ -148,7 +148,7 @@ class TorchTrainer(Trainer):
     
     torch.manual_seed(FIXED_SEED)
     
-    for i in range(1, (numEpochs := self.params['epochs'])+1):
+    for i in range(1, (numEpochs := self.trainParams['epochs'])+1):
       logger.info(f'Training epoch {i}/{numEpochs}')
       
       runningEpochTrainLoss = 0.    
@@ -212,10 +212,10 @@ class TorchTrainer(Trainer):
 
     meta = {
       'model_type': 'pytorch',
-      'model_name': self.params['pytorch_model'],
-      'target': self.params['target'],
-      'target_type': self.params['target_type'],
-      'val_range': self.params['val_range'],
+      'model_name': self.trainParams['pytorch_model'],
+      'target': self.trainParams['target'],
+      'target_type': self.trainParams['target_type'],
+      'val_range': self.trainParams['val_range'],
       'val_perf_metrics': self.valPerformanceMetrics,
       'input_col_types': self.inputColTypes
     }
@@ -229,7 +229,7 @@ class TorchTrainer(Trainer):
 
   def _makeLossCriterion(self) -> None:
     
-    if (targetType := self.params['target_type']) == 'binary':
+    if (targetType := self.trainParams['target_type']) == 'binary':
       lossType = nn.BCEWithLogitsLoss
       
     elif targetType == 'regression':
@@ -243,9 +243,9 @@ class TorchTrainer(Trainer):
     
 class SKLearnTrainer(Trainer):
   
-  def __init__(self, params):
-    super().__init__(params)
-    self.sklearnPipelineMaker = SKLearnPipelineMaker(params)
+  def __init__(self, trainParams):
+    super().__init__(trainParams)
+    self.sklearnPipelineMaker = SKLearnPipelineMaker(trainParams)
     
   @overrides
   def train(self) -> None:
@@ -262,7 +262,7 @@ class SKLearnTrainer(Trainer):
     
     trainX, trainY = self._splitXY(trainDF)
     logger.info(
-      f'Running hyperparameter search for {self.params["n_iter"]} iterations'
+      f'Running hyperparameter search for {self.trainParams["n_iter"]} iterations'
     )
     pipeline.fit(trainX, trainY)
     logger.info('Training complete')
@@ -277,9 +277,9 @@ class SKLearnTrainer(Trainer):
   def saveModel(self) -> None:
     meta = {
       'model_type': 'sklearn',
-      'model_name': self.params['sklearn_model'],
-      'target': self.params['target'],
-      'val_range': self.params['val_range'],
+      'model_name': self.trainParams['sklearn_model'],
+      'target': self.trainParams['target'],
+      'val_range': self.trainParams['val_range'],
       'input_col_types': self.inputColTypes,
       'val_perf_metrics': self.valPerformanceMetrics
     }
@@ -290,7 +290,7 @@ class SKLearnTrainer(Trainer):
     self.artifactsIOHandler.save(message)
   
   def _splitXY(self, inDF) -> T.Tuple[pd.DataFrame, pd.Series]:
-    target = self.params['target']
+    target = self.trainParams['target']
     df = inDF.copy()
     X = df.drop(columns=[target])
     y = df[target]
@@ -300,9 +300,11 @@ class SKLearnTrainer(Trainer):
 class TrainerFactory:
   
   @staticmethod
-  def make(params) -> T.Type[Trainer]:
+  def make(trainParams) -> T.Type[Trainer]:
     
-    modelType = 'pytorch' if params['pytorch_model'] is not None else 'sklearn'
+    modelType = (
+      'pytorch' if trainParams['pytorch_model'] is not None else 'sklearn'
+    )
 
     if modelType == 'pytorch':
       Trainer_ = TorchTrainer
@@ -313,4 +315,4 @@ class TrainerFactory:
     else:
       raise ValueError(f'{modelType=} not recognized')
       
-    return Trainer_(params)
+    return Trainer_(trainParams)
