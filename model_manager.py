@@ -7,8 +7,11 @@ import re
 import torch
 import pickle
 
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 from overrides import EnforceOverrides, overrides, final
-from artifacts_io_handler import ArtifactsIOHandler
+from sagemaker.s3 import S3Downloader
+from artifacts_io_handler import ArtifactsIOHandler, ArtifactsMessage
 
 logger = logging.getLogger(__name__)
 
@@ -16,121 +19,37 @@ logger = logging.getLogger(__name__)
 class ModelManager:
   
   def __init__(self):
-    self.params = params.copy()
-    self.artifactsIOHandler = ArtifactsIOHandler()
-    
-#   def loadModel(self, modelName) -> None:
-    
-#     meta, artifacts = self.artifactsIOHandler.load(modelName)
-#     modelPathDashes = re.sub('[/\.]', '-', meta['artifacts_path'])
-    
-#     if (modelType := meta['model_type']) == 'sklearn':
-#       model = artifacts['model_pipeline']
-      
-#     elif modelType == 'pytorch':
-#       breakpoint()
-    
-#     else:
-#       raise ValueError(f'{modelType=} not recognized')
-      
-#     breakpoint()
-    
+    self.artifactsIOHandler = ArtifactsIOHandler()    
   
-  def deployBestModel(self, target, evalMetric) -> None:
-    pass
+  def getBestModel(self, target, evalMetric) -> ArtifactsMessage:
     
-#     allS3Models = self.artifactsIOHandler.getAllModelArtifacts()
-#     self.artifactsIOHandler.downloadModelsFromList(allS3Models)
-#     allLocalModels = self._getAllLocalModels()
-#     inRangeModels = (
-#       allLocalModels if (modelType := self.params['model_type']) is None
-#       else self._keepModelsOfType(allLocalModels, 'pytorch')
-#       if modelType == 'pytorch'
-#       else self._keepModelsOfType(allLocalModels, 'sklearn')
-#       if modelType == 'sklearn'
-#       else None
-#     )
-#     assert inRangeModels is not None
-    
-#     fullModelPath = (
-#       self._selectModelNameFromList(inRangeModels)
-#       if self.params['model_name'] is not None
-#       else self._selectBestModelNameFromList(inRangeModels)
-#     )
-#     breakpoint()
-    
-#     modelName, modelArtifacts = (
-#       self.params['model_name'] 
-#       or self._getBestModel(inRangeModels)
-#     )
-#     model = self._loadBestModel(modelType, modelConfig)
-    
-#     model.deploy(1, 'ml.t2.medium', endpoint_name=model)
-
-  def _getAllLocalModels(self) -> T.List[str]:
-    
-    rootPath = pathlib.Path('artifacts/')
-    
-    def appendFilesRecursively(path, list_) -> None:
-      
-      for item in pathlib.os.listdir(path):
-        if re.findall('\.pt$|\.sk$', item):
-          list_.append(path/item)
-        elif pathlib.os.path.isdir(path/item):
-          appendFilesRecursively(path/item, list_)
-    
-    models = []
-    appendFilesRecursively(rootPath, models)
-    return models
-  
-  def _selectModelNameFromList(self, inRangeModels) -> str:
-    matchingModelPaths = [
-      m for m in inRangeModels
-      if pathlib.Path(m).stem == self.params['model_name']
-    ]
-    assert len(matchingModelPaths) > 0, (
-      f'Model {self.params["model_name"]} not found among models:'
-      f' {inRangeModels}'
+    s3ArtifactsTargetPath = (
+      self.artifactsIOHandler.s3ArtifactsPath + f'{target}/'
     )
-    assert not len(matchingModelPaths) > 1, (
-      f'Multiple models found matching name {self.params["model_name"]}:'
-      f'{matchingModelPaths}'
-    )
-    return matchingModelPaths[0]
-  
-  def _keepModelsOfType(self, modelsList, modelType) -> T.List[str]:
-    if modelType == 'pytorch':
-      return [m for m in modelsList if m.endswith('.pt')]
-    elif modelType == 'sklearn':
-      return [m for m in modelsList if m.endswith('.sk')]
-    else:
-      raise ValueError(f'{modelType=} not recognized')
-      
-  def _selectBestModelNameFromList(self, modelsList) -> T.Type[pathlib.Path]:
+    s3ModelPaths = S3Downloader.list(s3ArtifactsTargetPath)
+    modelNames = [Path(model).stem for model in s3ModelPaths]
     
-    modelsAndPerf = []
-    for m in modelsList:
-      if m.suffix == '.pt':
-        modelsAndPerf.append((m, torch.load(m)))
-      elif m.suffix == '.sk':
-        with open(m.as_posix(), 'rb') as file:
-          modelBytes = file.read()
-        modelsAndPerf.append((m, pickle.loads(modelBytes)))
-      else:
-        raise ValueError(f'{m=} not recognized model type')
-        
+    with ThreadPoolExecutor() as executor:
+      models = list(executor.map(self.artifactsIOHandler.load, modelNames))
+      
+    bestModel = models[0]
+    for mod in models[1:]:
+      
+      bestScore = bestModel.meta['val_perf_metrics'][evalMetric]
+      challengerScore = mod.meta['val_perf_metrics'][evalMetric]
+      
+      if evalMetric in ['pr_auc', 'roc_auc']:
+        if challengerScore > bestScore:
+          bestModel = mod
           
-    bestModel = None
-    bestScore = 0
-    for m in modelsAndPerf:
-      if (score := m[1]['val_perf_metrics']['pr_auc']) > bestScore:
-        bestModel = m[0]
-        bestScore = score
-      
-    assert bestModel is not None
+      elif evalMetric in ['mean_absolute_error', 'mean_squared_error']:
+        if challengerScore < bestScore:
+          bestModel = mod
+          
+      else:
+        raise ValueError(f'{evalMetric=} not recognized')
+        
     return bestModel
-  
-#   def _loadModel(self, modelFile) -> 
       
-    
+
     

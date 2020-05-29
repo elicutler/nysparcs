@@ -59,7 +59,7 @@ class SKLearnPipelineMaker:
     
     modelType = self.trainParams['sklearn_model']
     
-    if modelType == 'gradient_boosting_classifier':
+    if modelType == 'GradientBoostingClassifier':
       return self._makeGBCEstimator(processorPipe)
     
     else:

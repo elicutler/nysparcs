@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 class Predictor(EnforceOverrides):
   
   @abstractmethod
-  def __init__(self, params, artifactsMessage):
-    self.params = params.copy()
+  def __init__(self, predParams, artifactsMessage):
+    self.predParams = predParams.copy()
     self.artifactsMessage = artifactsMessage
     
     featureCols = (
@@ -36,7 +36,7 @@ class Predictor(EnforceOverrides):
     self.dataProcessor = DataProcessorFactory.make(featureCols) 
     
   @abstractmethod
-  def predict(self) -> dict:
+  def predict(self) -> pd.Series:
     pass
   
   @final
@@ -46,11 +46,11 @@ class Predictor(EnforceOverrides):
     '''
     # Could use pd.from_json() instead, but this gives more flexibility
     try:
-      with open(self.params['instances'], 'r') as file:
+      with open(self.predParams['instances'], 'r') as file:
         instances = json.load(file)
         
     except FileNotFoundError:
-      instances = json.loads(self.params['instances'])
+      instances = json.loads(self.predParams['instances'])
       
     return instances
   
@@ -66,14 +66,14 @@ class Predictor(EnforceOverrides):
 class PytorchPredictor(Predictor):
   
   @overrides
-  def __init__(self, params, artifactsMessage):
-    super().__init__(params, artifactsMessage)
+  def __init__(self, predParams, artifactsMessage):
+    super().__init__(predParams, artifactsMessage)
     self.modelArchitecture = (
       ModelArchitectureFactory.make(artifactsMessage.meta['model_name'])
     )
     
   @overrides
-  def predict(self) -> dict:
+  def predict(self) -> pd.Series:
     
     processedDF = self._processInstances()
     
@@ -102,43 +102,44 @@ class PytorchPredictor(Predictor):
           else model(X)
         )
         
-    predSeries = pd.Series(preds.numpy().squeeze(), index=processedDF.index)
-    return predSeries.to_dict()
-  
+    return pd.Series(preds.numpy().squeeze(), index=processedDF.index)
+    
   
 class SKLearnPredictor(Predictor):
   
   @overrides
-  def __init__(self, params, artifactsMessage):
-    super().__init__(params, artifactsMessage)
+  def __init__(self, predParams, artifactsMessage):
+    super().__init__(predParams, artifactsMessage)
     
   @overrides
-  def predict(self) -> dict:
+  def predict(self) -> pd.Series:
     
     processedDF = self._processInstances()
     pipeline = self.artifactsMessage.artifacts['model_pipeline']
     preds = pipeline.predict(processedDF)
     
-    predSeries = pd.Series(preds, index=processedDF.index)
-    return predSeries.to_dict()
+    return pd.Series(preds, index=processedDF.index)
         
       
 class PredictorFactory:
   
   @staticmethod
-  def make(params) -> T.Type[Predictor]:
+  def make(predParams) -> T.Type[Predictor]:
     
-    if (modelName := params['model_name']) is not None:
+    if (modelName := predParams['model_name']) is not None:
+      
       artifactsIOHandler = ArtifactsIOHandler()
       artifactsMessage = artifactsIOHandler.load(modelName)
       
-    elif params['best_model']:
-      artifactsMessage = ModelManager.getBestModel(
-        params['target'], params['eval_metric']
-      )
+    elif predParams['best_model']:
+      
+      target = predParams['target']
+      evalMetric = predParams['eval_metric']
+      modelManager = ModelManager()
+      artifactsMessage = modelManager.getBestModel(target, evalMetric)
       
     else:
-      raise Exception('Neither model_name nor best_model truthy in params')
+      raise Exception('Neither model_name nor best_model truthy')
       
     if (modelType := artifactsMessage.meta['model_type']) == 'pytorch':
       Predictor_ = PytorchPredictor
@@ -149,6 +150,6 @@ class PredictorFactory:
     else:
       raise ValueError(f'{modelType=} not recognized')
       
-    return Predictor_(params, artifactsMessage)
+    return Predictor_(predParams, artifactsMessage)
       
       

@@ -17,11 +17,11 @@ if __name__ == '__main__':
   logger.info('Making predictions...')
   
   parser = PredictArgParser()
-  params = SafeDict.fromNamespace(parser.parseArgs())
+  predParams = SafeDict.fromNamespace(parser.parseArgs())
   
-  logger.info(f'params:\n{params}')
+  logger.info(f'predParams:\n{predParams}')
   
-  predictor = PredictorFactory.make(params)
+  predictor = PredictorFactory.make(predParams)
   predictions = predictor.predict()
   
   logger.info(f'Predictions:\n{predictions}')
