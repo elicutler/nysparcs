@@ -14,8 +14,8 @@ class SessionManager:
   def __init__(self):
     secrets = parseSecrets()
     boto3Session = boto3.Session(
-      aws_access_key_id=secrets['aws_access_key_id'],
-      aws_secret_access_key=secrets['aws_secret_access_key'],
+      aws_access_key_id=secrets.get('aws_access_key_id'),
+      aws_secret_access_key=secrets.get('aws_secret_access_key'),
       region_name=secrets['region_name']
     )
     self.sagemakerSession = sagemaker.session.Session(
