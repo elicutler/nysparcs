@@ -11,7 +11,8 @@ from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from sagemaker.s3 import S3Uploader, S3Downloader
 from botocore.exceptions import ClientError
-from utils import initializeSession, parseSecrets, nowTimestampStr
+from session_manager import SessionManager
+from utils import parseSecrets, nowTimestampStr
 from constants import LOCAL_ARTIFACTS_PATH
 
 logger = logging.getLogger(__name__)
@@ -25,8 +26,8 @@ ArtifactsMessage = namedtuple('ArtifactsMessage', ['meta', 'artifacts'])
 class ArtifactsIOHandler:
   
   def __init__(self):
-    self.session = initializeSession()
-    self.s3BucketPath = f"s3://{parseSecrets()['s3_bucket']}"
+    self.session = SessionManager().getSagemakerSession()
+    self.s3BucketPath = f"s3://{parseSecrets()['s3_bucket']}/"
     self.s3ArtifactsPath = self.s3BucketPath + LOCAL_ARTIFACTS_PATH
   
   def save(self, artifactsMessage) -> None:
@@ -69,7 +70,7 @@ class ArtifactsIOHandler:
   def _saveToS3(self, artifactsPathLocalStr) -> None:
     artifactsPathLocal = pathlib.Path(artifactsPathLocalStr)
     s3Path = self.s3BucketPath + str(artifactsPathLocal.parent)
-    S3Uploader.upload(artifactsPathLocalStr, s3Path, session=self.session)
+    S3Uploader.upload(artifactsPathLocalStr, s3Path)
     logger.info(
       'Model artifact saved to s3:'
       f' {s3Path}/{artifactsPathLocal.stem}{artifactsPathLocal.suffix}'
@@ -77,7 +78,7 @@ class ArtifactsIOHandler:
     
   def _loadFromS3(self, modelName) -> str:
     allArtifactsS3 = (
-      S3Downloader.list(self.s3ArtifactsPath, session=self.session)
+      S3Downloader.list(self.s3ArtifactsPath)
     )
     
     matchingArtifactsS3 = [
@@ -94,9 +95,7 @@ class ArtifactsIOHandler:
       self.s3ArtifactsPath, LOCAL_ARTIFACTS_PATH, artifactsPathS3
     )
     artifactsParentPathLocal = pathlib.Path(artifactsPathLocal).parent
-    S3Downloader.download(
-      artifactsPathS3, artifactsParentPathLocal, session=self.session
-    )
+    S3Downloader.download(artifactsPathS3, artifactsParentPathLocal)
     
     logger.info(
       f'Downloaded artifact from {artifactsPathS3} to {artifactsPathLocal}'
