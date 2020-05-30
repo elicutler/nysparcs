@@ -107,7 +107,7 @@ class SocrataDataReader(DataReader):
     return df
   
   def _establishSocrataConn(self) -> Socrata:
-    with open('config/secrets.json', 'r') as f:
+    with open('.config/secrets.json', 'r') as f:
       appToken = json.load(f)['socrata']['app_token']
     return Socrata('health.data.ny.gov', appToken)
                 
