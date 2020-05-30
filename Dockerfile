@@ -5,5 +5,9 @@ MAINTAINER Eli Cutler <cutler.eli@gmail.com>
 
 WORKDIR /nysparcs
 
-CMD ["echo", "aaaay from $(pwd)"]
+COPY . .
+
+EXPOSE 80
+
+CMD ["ls", "-l", "-a"]
 

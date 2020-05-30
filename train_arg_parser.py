@@ -69,7 +69,7 @@ class TrainArgParser:
     self.parser.add_argument(
       '--run_id', type=str, 
       help=(
-        'Read parser arguments from stored json in run_config_store.json'
+        'Read parser arguments from stored json in run_id_store.json'
         ' with run_id as key. If this argument is passed, all other'
         ' arguments are ignored.'
       )
@@ -89,7 +89,7 @@ class TrainArgParser:
   
   def _parseArgsFromRunID(self, runID) -> argparse.Namespace:
     
-    with open('run_config_store.json') as file:
+    with open('run_id_store.json') as file:
       runConfigs = json.load(file)
       
     argsList = self._argsDictToList(runConfigs, runID)
