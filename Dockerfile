@@ -7,9 +7,7 @@ WORKDIR /nysparcs
 
 COPY . .
 
-RUN conda env create -f .config/environment.yaml
-
-EXPOSE 80
+RUN conda env create --file .config/environment.yaml
 
 ENTRYPOINT ["conda", "run", "--name", "nysparcs"]
 

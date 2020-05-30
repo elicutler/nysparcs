@@ -5,12 +5,23 @@ import multiprocessing
 import re
 import torch
 
+from configparser import ConfigParser
 from collections.abc import Sequence
 from datetime import datetime
 from pytz import timezone
+from constants import SECRETS_INI
 
 logger = logging.getLogger(__name__)
     
+  
+def parseSecrets() -> T.Dict[str, str]:
+  config = ConfigParser()
+  config.read(SECRETS_INI)
+  secrets = {
+    k: v for s in config.sections() 
+    for k, v in config['nysparcs'].items()
+  }
+  return secrets
 
 def getNumWorkers(numWorkers) -> int:
   return multiprocessing.cpu_count() - 1 if numWorkers == -1 else numWorkers

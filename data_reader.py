@@ -8,7 +8,7 @@ from pathlib import Path
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from sodapy import Socrata
-from constants import S3_BUCKET
+from utils import parseSecrets
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class LocalOrS3DataReader(DataReader):
       self.dataPath = Path(trainParams['local_data_path'])
     
     elif self.dataLoc == 's3':
-      s3Prefix = Path(f's3://{S3_BUCKET}/nysparcs/')
+      s3Prefix = Path(f"s3://{parseSecrets()['s3_bucket']}/nysparcs/")
       self.dataPath = s3Prefix/trainParams['s3_data_path']
     
   @overrides
@@ -107,8 +107,7 @@ class SocrataDataReader(DataReader):
     return df
   
   def _establishSocrataConn(self) -> Socrata:
-    with open('.config/secrets.json', 'r') as f:
-      appToken = json.load(f)['socrata']['app_token']
+    appToken = parseSecrets()['socrata_app_token']
     return Socrata('health.data.ny.gov', appToken)
                 
 

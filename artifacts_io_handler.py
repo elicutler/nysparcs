@@ -5,14 +5,15 @@ import pathlib
 import pickle
 import re
 import torch
+import boto3
 
 from collections import OrderedDict, namedtuple
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from sagemaker.s3 import S3Uploader, S3Downloader
 from botocore.exceptions import ClientError
-from utils import nowTimestampStr
-from constants import S3_BUCKET, LOCAL_ARTIFACTS_PATH
+from utils import parseSecrets, nowTimestampStr
+from constants import LOCAL_ARTIFACTS_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +25,15 @@ ArtifactsMessage = namedtuple('ArtifactsMessage', ['meta', 'artifacts'])
 
 class ArtifactsIOHandler:
   
-  localArtifactsPath = LOCAL_ARTIFACTS_PATH
-  s3BucketPath = f's3://{S3_BUCKET}/'
-  s3ArtifactsPath = s3BucketPath + localArtifactsPath
+  def __init__(self):
+    secrets = parseSecrets()
+    self.s3BucketPath = f"s3://{secrets['s3_bucket']}"
+    self.s3ArtifactsPath = s3BucketPath + LOCAL_ARTIFACTS_PATH
+    self.session = boto3.session(
+      aws_access_key_id=secrets['aws_access_key_id'],
+      aws_secret_access_key=secrets['aws_secret_access_key'],
+      region_name=secrets['region_name']
+    )
   
   def save(self, artifactsMessage) -> None:
     artifactsPathLocal = self._saveToLocal(artifactsMessage)
@@ -45,7 +52,7 @@ class ArtifactsIOHandler:
     target = artifactsMessage.meta['target']
     modelType = artifactsMessage.meta['model_type']
     modelName = artifactsMessage.meta['model_name']
-    parentPath = self.localArtifactsPath + f'{target}/{modelType}/{modelName}/'
+    parentPath = LOCAL_ARTIFACTS_PATH + f'{target}/{modelType}/{modelName}/'
     artifactsPathNoSuffix = parentPath + f'{modelName}_{nowTimestampStr()}'
     
     if not pathlib.os.path.exists(parentPath):
@@ -68,14 +75,16 @@ class ArtifactsIOHandler:
   def _saveToS3(self, artifactsPathLocalStr) -> None:
     artifactsPathLocal = pathlib.Path(artifactsPathLocalStr)
     s3Path = self.s3BucketPath + str(artifactsPathLocal.parent)
-    S3Uploader.upload(artifactsPathLocalStr, s3Path)
+    S3Uploader.upload(artifactsPathLocalStr, s3Path, session=self.session)
     logger.info(
       'Model artifact saved to s3:'
       f' {s3Path}/{artifactsPathLocal.stem}{artifactsPathLocal.suffix}'
     )
     
   def _loadFromS3(self, modelName) -> str:
-    allArtifactsS3 = S3Downloader.list(self.s3ArtifactsPath)
+    allArtifactsS3 = (
+      S3Downloader.list(self.s3ArtifactsPath, session=self.session)
+    )
     
     matchingArtifactsS3 = [
       a for a in allArtifactsS3
@@ -88,10 +97,12 @@ class ArtifactsIOHandler:
     
     artifactsPathS3 = matchingArtifactsS3[0]
     artifactsPathLocal = re.sub(
-      self.s3ArtifactsPath, self.localArtifactsPath, artifactsPathS3
+      self.s3ArtifactsPath, LOCAL_ARTIFACTS_PATH, artifactsPathS3
     )
     artifactsParentPathLocal = pathlib.Path(artifactsPathLocal).parent
-    S3Downloader.download(artifactsPathS3, artifactsParentPathLocal)
+    S3Downloader.download(
+      artifactsPathS3, artifactsParentPathLocal, session=self.session
+    )
     
     logger.info(
       f'Downloaded artifact from {artifactsPathS3} to {artifactsPathLocal}'
