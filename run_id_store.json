@@ -1,0 +1,99 @@
+
+{
+  "test_torch_local_data": {
+    "target": "prior_auth_dispo",
+    "target_type": "binary",
+    "features": [
+      "hospital_county",
+      "age_group",
+      "gender",
+      "race",
+      "type_of_admission",
+      "ccs_diagnosis",
+      "ccs_procedure",
+      "source_of_payment_1",
+      "source_of_payment_2",
+      "emergency_department_indicator",
+      "total_charges"
+    ],
+    "cat_encoder_strat": "one_hot",
+    "pytorch_model": "CatEmbedNet",
+    "local_data_path": "data/Hospital_Inpatient_Discharges__SPARCS_De-Identified___2009.csv",
+    "epochs": 1,
+    "batch_size": 100,
+    "train_range": [100, 2000],
+    "val_range": [5001, 6000]
+  },
+  "test_torch_socrata_data": {
+    "target": "prior_auth_dispo",
+    "target_type": "binary",
+    "features": [
+      "hospital_county",
+      "age_group",
+      "gender",
+      "race",
+      "type_of_admission",
+      "ccs_diagnosis",
+      "ccs_procedure",
+      "source_of_payment_1",
+      "source_of_payment_2",
+      "emergency_department_indicator",
+      "total_charges"
+    ],
+    "cat_encoder_strat": "one_hot",
+    "pytorch_model": "CatEmbedNet",
+    "socrata_data_key": "q6hk-esrj",
+    "epochs": 1,
+    "batch_size": 100,
+    "train_range": [100, 2000],
+    "val_range": [5001, 6000]
+  },
+  "test_sklearn_local_data": {
+    "target": "prior_auth_dispo",
+    "target_type": "binary",
+    "features": [
+      "hospital_county",
+      "age_group",
+      "gender",
+      "race",
+      "type_of_admission",
+      "ccs_diagnosis",
+      "ccs_procedure",
+      "source_of_payment_1",
+      "source_of_payment_2",
+      "emergency_department_indicator",
+      "total_charges"
+    ],
+    "cat_encoder_strat": "target",
+    "sklearn_model": "GradientBoostingClassifier",
+    "local_data_path": "data/Hospital_Inpatient_Discharges__SPARCS_De-Identified___2009.csv",
+    "eval_metric": "roc_auc",
+    "n_iter": 1,
+    "train_range": [100, 2000],
+    "val_range": [5001, 6000]
+  },
+  "test_sklearn_socrata_data": {
+    "target": "prior_auth_dispo",
+    "target_type": "binary",
+    "features": [
+      "hospital_county",
+      "age_group",
+      "gender",
+      "race",
+      "type_of_admission",
+      "ccs_diagnosis",
+      "ccs_procedure",
+      "source_of_payment_1",
+      "source_of_payment_2",
+      "emergency_department_indicator",
+      "total_charges"
+    ],
+    "cat_encoder_strat": "target",
+    "sklearn_model": "GradientBoostingClassifier",
+    "socrata_data_key": "q6hk-esrj",
+    "eval_metric": "roc_auc",
+    "n_iter": 1,
+    "train_range": [100, 2000],
+    "val_range": [5001, 6000]
+  }
+}

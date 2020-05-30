@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# run this script from project root in main shell, i.e. with: . ./startup.sh
+# run this script in main shell, i.e. with: source ./startup.sh
 
 # export settings
 ipython profile create
@@ -21,9 +21,9 @@ else
     echo "Warning: No miniconda or anaconda installation found"
 fi
 
-conda env create --force --file environment.yaml
+conda env create --file environment.yaml
 echo ". /home/ec2-user/anaconda3/etc/profile.d/conda.sh" >> ~/.bashrc
-. ~/.bashrc
+source ~/.bashrc
 conda activate nysparcs
 
 # set git user

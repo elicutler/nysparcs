@@ -1,6 +1,7 @@
 
 import typing as T
 import logging
+import pandas as pd
 
 from pandas.api.types import is_numeric_dtype
 from sklearn.impute import SimpleImputer
@@ -10,7 +11,8 @@ from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import RandomizedSearchCV
 from target_encoder import TargetEncoder
-from utils import getNumCores
+from safe_dict import SafeDict
+from utils import getNumWorkers
 from constants import FIXED_SEED
 
 logger = logging.getLogger(__name__)
@@ -18,22 +20,20 @@ logger = logging.getLogger(__name__)
 
 class SKLearnPipelineMaker:
   
-  def __init__(self, params):
-    self.params = params.copy()
+  def __init__(self, trainParams: SafeDict):
+    self.trainParams = trainParams.copy()
     self.catEncoder = self._getCatEncoder()
     
-    self.target = params['target']
-    self.n_iter = params['n_iter']
-    self.n_jobs = (
-      getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
-    )
-    self.eval_metric = params['eval_metric']
+    self.target = trainParams['target']
+    self.n_iter = trainParams['n_iter']
+    self.n_jobs = getNumWorkers(self.trainParams['num_workers'])
+    self.eval_metric = trainParams['eval_metric']
     
     self.inputColTypes = None
     self.catFeatureCols = None
     self.numFeatureCols = None
     
-  def loadInputColTypes(self, inputColTypes) -> None:
+  def loadInputColTypes(self, inputColTypes: pd.Series) -> None:
     self.inputColTypes = inputColTypes.copy()
     self.catFeatureCols = (
       self.inputColTypes.drop(self.target)[self.inputColTypes == 'object']
@@ -59,7 +59,9 @@ class SKLearnPipelineMaker:
       ('cat_pipe', catPipe, self.catFeatureCols)
     ])
     
-    if (modelType := self.params['sklearn_model']) == 'gradient_boosting_classifier':
+    modelType = self.trainParams['sklearn_model']
+    
+    if modelType == 'GradientBoostingClassifier':
       return self._makeGBCEstimator(processorPipe)
     
     else:
@@ -67,7 +69,9 @@ class SKLearnPipelineMaker:
 
   def _getCatEncoder(self) -> T.Union[TargetEncoder, OneHotEncoder]:
 
-    if (catEncoderStrat := self.params['cat_encoder_strat']) == 'target':
+    catEncoderStrat = self.trainParams['cat_encoder_strat']
+      
+    if catEncoderStrat == 'target':
       return TargetEncoder(priorFrac=0.1)
 
     elif catEncoderStrat == 'one_hot':
@@ -76,7 +80,9 @@ class SKLearnPipelineMaker:
     else:
       raise ValueError(f'{catEncoderStrat=} not recognized')
       
-  def _makeGBCEstimator(self, processorPipe) -> RandomizedSearchCV: 
+  def _makeGBCEstimator(
+    self, processorPipe: ColumnTransformer
+  ) -> RandomizedSearchCV: 
     
     estimatorPipe = Pipeline([
       ('processor', processorPipe),
@@ -97,4 +103,5 @@ class SKLearnPipelineMaker:
       scoring=self.eval_metric, n_jobs=self.n_jobs, random_state=FIXED_SEED,
       verbose=1
     )
+    logger.info(f'Pipeline created with {self.n_jobs=}')
     return hyperparamSearchPipe

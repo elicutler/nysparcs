@@ -13,19 +13,20 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from target_encoder import TargetEncoder
+from safe_dict import SafeDict
 
 logger = logging.getLogger(__name__)
 
     
 class SKLearnProcessor:
   
-  def __init__(self, params):
-    self.params = params.copy()
+  def __init__(self, trainParams: SafeDict):
+    self.trainParams = trainParams.copy()
     
     self.trainDF = None
     self.pipe = None
 
-  def loadDF(self, inDF) -> None:
+  def loadDF(self, inDF: pd.DataFrame) -> None:
     self.trainDF = inDF.copy()
     
   def fit(self) -> None:
@@ -40,8 +41,8 @@ class SKLearnProcessor:
     
     assert self.trainDF is not None, 'first call self.loadDF()'
     
-    trainX = self.trainDF.drop(columns=[self.params['target']])
-    trainY = self.trainDF[self.params['target']]
+    trainX = self.trainDF.drop(columns=[self.trainParams['target']])
+    trainY = self.trainDF[self.trainParams['target']]
     
     numFeatureCols = trainX.select_dtypes(include=['number']).columns
     catFeatureCols = trainX.select_dtypes(include=['object']).columns
@@ -71,19 +72,22 @@ class SKLearnProcessor:
   
   def _getCatEncoderStrat(self) -> T.Union[OneHotEncoder, TargetEncoder]:
     
-    if (catEncoderStrat := self.params['cat_encoder_strat']) == 'one_hot':
+    if (catEncoderStrat := self.trainParams['cat_encoder_strat']) == 'one_hot':
       return OneHotEncoder(handle_unknown='ignore')
     
     elif catEncoderStrat == 'target':
-      return TargetEncoder(priorFrac=self.params['target_encoder_prior'])
+      return TargetEncoder(priorFrac=self.trainParams['target_encoder_prior'])
 
     raise ValueError(f'{catEncoderStrat=} not recognized')
     
-  def _setFeatureNames(self, trainX, numFeatureCols, catFeatureCols) -> None:
+  def _setFeatureNames(
+    self, trainX: pd.DataFrame, numFeatureCols: T.Sequence[str], 
+    catFeatureCols: T.Sequence[str]
+  ) -> None:
         
     self.pipe.featureInputNames = trainX.columns.to_list()
     
-    if (catEncoderStrat := self.params['cat_encoder_strat']) == 'one_hot':
+    if (catEncoderStrat := self.trainParams['cat_encoder_strat']) == 'one_hot':
       oneHotNames = (
           self.pipe
         .named_transformers_['cat_pipe']

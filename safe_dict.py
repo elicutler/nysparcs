@@ -1,6 +1,7 @@
 
 import logging
 import typing as T
+import argparse
 
 from copy import deepcopy
 from overrides import overrides
@@ -14,7 +15,7 @@ class SafeDict(dict):
     super().__init__(*args, **kwargs)
     
   @overrides
-  def __setitem__(self, key, value):
+  def __setitem__(self, key: str, value: T.Any):
     # deliberate violation of Liskov substitution principle
     raise NotImplementedError('Cannot modify SafeDict')
 
@@ -27,7 +28,7 @@ class SafeDict(dict):
     return {k: deepcopy(v) for k, v in self.items()}
   
   @classmethod
-  def fromNamespace(cls, namespace):
+  def fromNamespace(cls, namespace: argparse.Namespace) -> 'SafeDict':
     namespaceDict = namespace.__dict__
     return cls(namespaceDict)
   

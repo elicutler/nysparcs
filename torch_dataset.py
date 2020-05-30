@@ -14,37 +14,44 @@ logger = logging.getLogger(__name__)
 
 class TorchDataset(Dataset):
   
-  def __init__(self, params, inDF, sklearnProcessor):
-    self.params = params.copy()
+  def __init__(self, inDF, sklearnProcessor, target=None):
     self.df = inDF.copy()
     self.sklearnProcessor = sklearnProcessor
+    self.target = target
     
     self._validateFeatures()
     
   def __len__(self) -> int:
     return self.df.shape[0]
   
-  def __getitem__(self, idx) -> T.Tuple[torch.Tensor]:
-    featureInputs = (
-      self.df
-      .drop(columns=self.params['target'])
-      .iloc[idx]
-      .to_frame()
-      .transpose()
-    )
-    X = torch.from_numpy(
-      np.array(
-        self.sklearnProcessor.transform(featureInputs).todense()
-      ).squeeze()
-    ).float()    
-    y = torch.from_numpy(
-      np.array([self.df[self.params['target']].iloc[idx]])
-    ).float()
-    return X, y
+  def __getitem__(
+    self, idx: int
+  ) -> T.Union[T.Sequence[torch.Tensor], torch.Tensor]:
+
+    inputDF = self._makeInputDF()
+    featureInputs = inputDF.iloc[idx].to_frame().transpose()
+    
+    XMatrix = self.sklearnProcessor.transform(featureInputs).todense()
+    XArray = np.array(XMatrix).squeeze()
+    X = torch.from_numpy(XArray).float()
+    
+    if self.target is not None:
+      yArray = np.array(self.df[[self.target]].iloc[idx])
+      y = torch.from_numpy(yArray).float()
+      
+    return (X, y) if self.target is not None else X
     
   def _validateFeatures(self) -> None:
+    inputDF = self._makeInputDF()
     assert (
-      (self.df.drop(columns=self.params['target']).columns 
-      == self.sklearnProcessor.featureInputNames)
-    ).all()
+      (inputDF.columns == self.sklearnProcessor.featureInputNames).all()
+    )
+    
+  def _makeInputDF(self) -> pd.DataFrame:
+    inputDF = (
+      self.df.drop(columns=self.target) 
+      if self.target is not None 
+      else self.df.copy()
+    )
+    return inputDF
     

@@ -4,7 +4,6 @@ import logging
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch_models
 import pandas as pd
 import numpy as np
 
@@ -16,14 +15,16 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import confusion_matrix, roc_auc_score, average_precision_score
 from sklearn.metrics import mean_absolute_error, median_absolute_error
 from data_reader import DataReaderFactory
-from data_processor import DataProcessor
+from data_processor import DataProcessorFactory
 from sklearn_processor import SKLearnProcessor
-from artifacts_io_handler import ArtifactsIOHandlerFactory
+from torch_models import ModelArchitectureFactory
+from artifacts_io_handler import ArtifactsIOHandler, ArtifactsMessage
 from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
-from utils import getNumCores
+from utils import getNumWorkers, getProcessingDevice
 from constants import FIXED_SEED
 from sklearn_pipelines import SKLearnPipelineMaker
+from safe_dict import SafeDict
 
 logger = logging.getLogger(__name__)
     
@@ -31,11 +32,13 @@ logger = logging.getLogger(__name__)
 class Trainer(EnforceOverrides):
   
   @abstractmethod
-  def __init__(self, params):
-    self.params = params.copy()
-    self.dataReader = DataReaderFactory.make(params)
-    self.dataProcessor = DataProcessor(params)
-    self.artifactsIOHandler = ArtifactsIOHandlerFactory.make(params)
+  def __init__(self, trainParams):
+    self.trainParams = trainParams.copy()
+    self.dataReader = DataReaderFactory.make(trainParams)
+    self.dataProcessor = DataProcessorFactory.make(
+      trainParams['features'], targetCol=trainParams['target']
+    )
+    self.artifactsIOHandler = ArtifactsIOHandler()
     
     self.inputColTypes = None
     self.valPerformanceMetrics = None
@@ -49,9 +52,11 @@ class Trainer(EnforceOverrides):
     pass
 
   @final
-  def _calcPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
+  def _calcPerformanceMetrics(
+    self, actuals: pd.Series, preds: np.ndarray
+  ) -> T.Mapping[str, float]:
     
-    if (targetType := self.params['target_type']) == 'binary':
+    if (targetType := self.trainParams['target_type']) == 'binary':
       perfCalculator = self._calcBinaryPerformanceMetrics
     
     elif targetType == 'regression':
@@ -65,7 +70,9 @@ class Trainer(EnforceOverrides):
     return metrics
       
   @final
-  def _calcBinaryPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
+  def _calcBinaryPerformanceMetrics(
+    self, actuals: pd.Series, preds: np.ndarray
+  ) -> T.Mapping[str, float]:
     metrics = {
       'confusion_matrix': confusion_matrix(actuals, preds >= 0.5),
       'roc_auc': roc_auc_score(actuals, preds),
@@ -76,7 +83,9 @@ class Trainer(EnforceOverrides):
     return metrics
   
   @final
-  def _calcRegressionPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
+  def _calcRegressionPerformanceMetrics(
+    self, actuals: pd.Series, preds: np.ndarray
+  ) -> T.Mapping[str, float]:
     metrics = {
       'mean_abs_err': mean_absolute_error(actuals, preds),
       'med_abs_err': median_absolute_error(actuals, preds),
@@ -90,9 +99,12 @@ class Trainer(EnforceOverrides):
 class TorchTrainer(Trainer):
 
   @overrides
-  def __init__(self, params):
-    super().__init__(params)
-    self.sklearnProcessor = SKLearnProcessor(params)
+  def __init__(self, trainParams: SafeDict):
+    super().__init__(trainParams)
+    self.sklearnProcessor = SKLearnProcessor(trainParams)
+    self.modelArchitecture = (
+      ModelArchitectureFactory.make(trainParams['pytorch_model'])
+    )
     self.model = None
     self.optimizer = None
   
@@ -100,7 +112,6 @@ class TorchTrainer(Trainer):
   def train(self):
     
     rawDF = self.dataReader.read()
-    
     self.dataProcessor.loadDF(rawDF)
     self.dataProcessor.processDF()
     trainDF, valDF = self.dataProcessor.getTrainValDFs()
@@ -111,13 +122,15 @@ class TorchTrainer(Trainer):
     self.sklearnProcessor.fit()
     sklearnProcessor = self.sklearnProcessor.get()
     
-    torchTrainDF = TorchDataset(self.params, trainDF, sklearnProcessor)
-    torchValDF = TorchDataset(self.params, valDF, sklearnProcessor)
-    
-    batchSize = self.params['batch_size']
-    numWorkers = (
-      getNumCores()-1 if (x := self.params['num_workers']) == -1 else x
+    torchTrainDF = TorchDataset(
+      trainDF, sklearnProcessor, target=self.trainParams['target']
     )
+    torchValDF = TorchDataset(
+      valDF, sklearnProcessor, target=self.trainParams['target']
+    )
+    
+    batchSize = self.trainParams['batch_size']
+    numWorkers = getNumWorkers(self.trainParams['num_workers'])
     logger.info(f'Running on {numWorkers} cores')
     
     trainLoader = DataLoader(
@@ -127,18 +140,11 @@ class TorchTrainer(Trainer):
       torchValDF, batch_size=batchSize, num_workers=numWorkers, shuffle=False
     )
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    logger.info(f'Training on {device=}')
+    device = getProcessingDevice()
+    logger.info(f'Training on {device=} with {numWorkers=}')
     
-    self.model = self._loadModel(sklearnProcessor.featureNames).to(device)
+    self.model = self.modelArchitecture(sklearnProcessor.featureNames).to(device)
     self.optimizer = optim.Adam(self.model.parameters())
-    
-    if (
-      self.params['load_latest_state_dict'] 
-      or self.params['load_state_dict'] is not None
-    ):
-      self._loadStateDicts()
-      
     lossCriterion = self._makeLossCriterion()
     
     allEpochTrainLosses = []
@@ -149,7 +155,7 @@ class TorchTrainer(Trainer):
     
     torch.manual_seed(FIXED_SEED)
     
-    for i in range(1, (numEpochs := self.params['epochs'])+1):
+    for i in range(1, (numEpochs := self.trainParams['epochs'])+1):
       logger.info(f'Training epoch {i}/{numEpochs}')
       
       runningEpochTrainLoss = 0.    
@@ -211,41 +217,26 @@ class TorchTrainer(Trainer):
   @overrides
   def saveModel(self) -> None:
 
+    meta = {
+      'model_type': 'pytorch',
+      'model_name': self.trainParams['pytorch_model'],
+      'target': self.trainParams['target'],
+      'target_type': self.trainParams['target_type'],
+      'val_range': self.trainParams['val_range'],
+      'val_perf_metrics': self.valPerformanceMetrics,
+      'input_col_types': self.inputColTypes
+    }
     artifacts = {
-      'target': self.params['target'],
-      'val_range': self.params['val_range'],
-      'input_col_types': self.inputColTypes,
       'sklearn_processor': self.sklearnProcessor.get(),
       'model_state_dict': self.model.state_dict(),
       'optimizer_state_dict': self.optimizer.state_dict(),
-      'val_perf_metrics': self.valPerformanceMetrics
     }
-    self.artifactsIOHandler.saveTorch(artifacts)
+    message = ArtifactsMessage(meta, artifacts)
+    self.artifactsIOHandler.save(message)
 
-  def _loadModel(self, featureNames) -> T.Type[nn.Module]:
-    
-    if (modelName := self.params['pytorch_model']) == 'CatEmbedNet':
-      modelClass = torch_models.CatEmbedNet
-      
-    else:
-      raise ValueError(f'{modelClass=} not recognized')
-      
-    return modelClass(featureNames)
-  
-  def _loadStateDicts(self) -> None:
-    
-    if (checkpoint := self.artifactsIOHandler.loadTorch()) is not None:
-      
-      self._validateInputColumns(checkpoint['input_col_types'])
-      self.model.load_state_dict(checkpoint['model_state_dict'])
-      self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-      
-    else:
-      logger.warning('No state dict loaded')
-      
   def _makeLossCriterion(self) -> None:
     
-    if (targetType := self.params['target_type']) == 'binary':
+    if (targetType := self.trainParams['target_type']) == 'binary':
       lossType = nn.BCEWithLogitsLoss
       
     elif targetType == 'regression':
@@ -256,28 +247,17 @@ class TorchTrainer(Trainer):
       
     return lossType(reduction='sum')
   
-  def _validateInputColumns(self, loadedInputColTypes) -> None:
-    assert (self.inputColTypes.index == loadedInputColTypes.index).all(), (
-      f'Input column names do not match:\n{self.inputColTypes=}'
-      f'\n{loadedInputColTypes=}'
-    )
-    assert (self.inputColTypes.values == loadedInputColTypes.values).all(), (
-      f'Input column data types do not match:\n{self.inputColTypes=}'
-      f'\n{loadedInputColTypes=}'
-    )
-    
     
 class SKLearnTrainer(Trainer):
   
-  def __init__(self, params):
-    super().__init__(params)
-    self.sklearnPipelineMaker = SKLearnPipelineMaker(params)
+  def __init__(self, trainParams: SafeDict):
+    super().__init__(trainParams)
+    self.sklearnPipelineMaker = SKLearnPipelineMaker(trainParams)
     
   @overrides
   def train(self) -> None:
     
     rawDF = self.dataReader.read()
-    
     self.dataProcessor.loadDF(rawDF)
     self.dataProcessor.processDF()
     trainDF, valDF = self.dataProcessor.getTrainValDFs()
@@ -289,7 +269,7 @@ class SKLearnTrainer(Trainer):
     
     trainX, trainY = self._splitXY(trainDF)
     logger.info(
-      f'Running hyperparameter search for {self.params["n_iter"]} iterations'
+      f'Running hyperparameter search for {self.trainParams["n_iter"]} iterations'
     )
     pipeline.fit(trainX, trainY)
     logger.info('Training complete')
@@ -302,17 +282,22 @@ class SKLearnTrainer(Trainer):
     
   @overrides 
   def saveModel(self) -> None:
-    artifacts = {
-      'target': self.params['target'],
-      'val_range': self.params['val_range'],
+    meta = {
+      'model_type': 'sklearn',
+      'model_name': self.trainParams['sklearn_model'],
+      'target': self.trainParams['target'],
+      'val_range': self.trainParams['val_range'],
       'input_col_types': self.inputColTypes,
-      'pipeline': self.pipeline,
       'val_perf_metrics': self.valPerformanceMetrics
     }
-    self.artifactsIOHandler.saveSKLearn(artifacts)
+    artifacts = {
+      'model_pipeline': self.pipeline
+    }
+    message = ArtifactsMessage(meta, artifacts)
+    self.artifactsIOHandler.save(message)
   
   def _splitXY(self, inDF) -> T.Tuple[pd.DataFrame, pd.Series]:
-    target = self.params['target']
+    target = self.trainParams['target']
     df = inDF.copy()
     X = df.drop(columns=[target])
     y = df[target]
@@ -322,17 +307,19 @@ class SKLearnTrainer(Trainer):
 class TrainerFactory:
   
   @staticmethod
-  def make(params) -> T.Type[Trainer]:
+  def make(trainParams: SafeDict) -> T.Type[Trainer]:
     
-    modelType = 'pytorch' if params['pytorch_model'] is not None else 'sklearn'
+    modelType = (
+      'pytorch' if trainParams['pytorch_model'] is not None else 'sklearn'
+    )
 
     if modelType == 'pytorch':
-      trainer = TorchTrainer
+      Trainer_ = TorchTrainer
     
     elif modelType == 'sklearn':
-      trainer = SKLearnTrainer
+      Trainer_ = SKLearnTrainer
     
     else:
       raise ValueError(f'{modelType=} not recognized')
       
-    return trainer(params)
+    return Trainer_(trainParams)
