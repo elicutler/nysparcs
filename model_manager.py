@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from overrides import EnforceOverrides, overrides, final
 from sagemaker.s3 import S3Downloader
 from artifacts_io_handler import ArtifactsIOHandler, ArtifactsMessage
+from utils import initializeSession
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +21,16 @@ class ModelManager:
   
   def __init__(self):
     self.artifactsIOHandler = ArtifactsIOHandler()    
+    self.session = initializeSession()
   
   def getBestModel(self, target, evalMetric) -> ArtifactsMessage:
     
     s3ArtifactsTargetPath = (
       self.artifactsIOHandler.s3ArtifactsPath + f'{target}/'
     )
-    s3ModelPaths = S3Downloader.list(s3ArtifactsTargetPath)
+    s3ModelPaths = (
+      S3Downloader.list(s3ArtifactsTargetPath, session=self.session)
+    )
     modelNames = [Path(model).stem for model in s3ModelPaths]
     
     with ThreadPoolExecutor() as executor:

@@ -5,14 +5,13 @@ import pathlib
 import pickle
 import re
 import torch
-import boto3
 
 from collections import OrderedDict, namedtuple
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from sagemaker.s3 import S3Uploader, S3Downloader
 from botocore.exceptions import ClientError
-from utils import parseSecrets, nowTimestampStr
+from utils import initializeSession, parseSecrets, nowTimestampStr
 from constants import LOCAL_ARTIFACTS_PATH
 
 logger = logging.getLogger(__name__)
@@ -26,14 +25,9 @@ ArtifactsMessage = namedtuple('ArtifactsMessage', ['meta', 'artifacts'])
 class ArtifactsIOHandler:
   
   def __init__(self):
-    secrets = parseSecrets()
-    self.s3BucketPath = f"s3://{secrets['s3_bucket']}"
-    self.s3ArtifactsPath = s3BucketPath + LOCAL_ARTIFACTS_PATH
-    self.session = boto3.session(
-      aws_access_key_id=secrets['aws_access_key_id'],
-      aws_secret_access_key=secrets['aws_secret_access_key'],
-      region_name=secrets['region_name']
-    )
+    self.session = initializeSession()
+    self.s3BucketPath = f"s3://{parseSecrets()['s3_bucket']}"
+    self.s3ArtifactsPath = self.s3BucketPath + LOCAL_ARTIFACTS_PATH
   
   def save(self, artifactsMessage) -> None:
     artifactsPathLocal = self._saveToLocal(artifactsMessage)

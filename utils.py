@@ -4,6 +4,7 @@ import logging
 import multiprocessing
 import re
 import torch
+import boto3
 
 from configparser import ConfigParser
 from collections.abc import Sequence
@@ -22,6 +23,17 @@ def parseSecrets() -> T.Dict[str, str]:
     for k, v in config['nysparcs'].items()
   }
   return secrets
+
+
+def initializeSession() -> boto3.session:
+  secrets = parseSecrets()
+  session = boto3.Session(
+    aws_access_key_id=secrets['aws_access_key_id'],
+    aws_secret_access_key=secrets['aws_secret_access_key'],
+    region_name=secrets['region_name']
+  )
+  return session
+  
 
 def getNumWorkers(numWorkers) -> int:
   return multiprocessing.cpu_count() - 1 if numWorkers == -1 else numWorkers
