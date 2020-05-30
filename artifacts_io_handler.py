@@ -12,7 +12,7 @@ from overrides import EnforceOverrides, overrides, final
 from sagemaker.s3 import S3Uploader, S3Downloader
 from botocore.exceptions import ClientError
 from utils import nowTimestampStr
-from constants import S3_BUCKET
+from constants import S3_BUCKET, LOCAL_ARTIFACTS_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ ArtifactsMessage = namedtuple('ArtifactsMessage', ['meta', 'artifacts'])
 
 class ArtifactsIOHandler:
   
-  localArtifactsPath = 'artifacts/'
+  localArtifactsPath = LOCAL_ARTIFACTS_PATH
   s3BucketPath = f's3://{S3_BUCKET}/'
   s3ArtifactsPath = s3BucketPath + localArtifactsPath
   
