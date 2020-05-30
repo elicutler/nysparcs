@@ -13,19 +13,20 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from target_encoder import TargetEncoder
+from safe_dict import SafeDict
 
 logger = logging.getLogger(__name__)
 
     
 class SKLearnProcessor:
   
-  def __init__(self, trainParams):
+  def __init__(self, trainParams: SafeDict):
     self.trainParams = trainParams.copy()
     
     self.trainDF = None
     self.pipe = None
 
-  def loadDF(self, inDF) -> None:
+  def loadDF(self, inDF: pd.DataFrame) -> None:
     self.trainDF = inDF.copy()
     
   def fit(self) -> None:
@@ -79,7 +80,10 @@ class SKLearnProcessor:
 
     raise ValueError(f'{catEncoderStrat=} not recognized')
     
-  def _setFeatureNames(self, trainX, numFeatureCols, catFeatureCols) -> None:
+  def _setFeatureNames(
+    self, trainX: pd.DataFrame, numFeatureCols: T.Sequence[str], 
+    catFeatureCols: T.Sequence[str]
+  ) -> None:
         
     self.pipe.featureInputNames = trainX.columns.to_list()
     

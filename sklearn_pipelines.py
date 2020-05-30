@@ -1,6 +1,7 @@
 
 import typing as T
 import logging
+import pandas as pd
 
 from pandas.api.types import is_numeric_dtype
 from sklearn.impute import SimpleImputer
@@ -10,6 +11,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import RandomizedSearchCV
 from target_encoder import TargetEncoder
+from safe_dict import SafeDict
 from utils import getNumWorkers
 from constants import FIXED_SEED
 
@@ -18,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class SKLearnPipelineMaker:
   
-  def __init__(self, trainParams):
+  def __init__(self, trainParams: SafeDict):
     self.trainParams = trainParams.copy()
     self.catEncoder = self._getCatEncoder()
     
@@ -31,7 +33,7 @@ class SKLearnPipelineMaker:
     self.catFeatureCols = None
     self.numFeatureCols = None
     
-  def loadInputColTypes(self, inputColTypes) -> None:
+  def loadInputColTypes(self, inputColTypes: pd.Series) -> None:
     self.inputColTypes = inputColTypes.copy()
     self.catFeatureCols = (
       self.inputColTypes.drop(self.target)[self.inputColTypes == 'object']
@@ -67,7 +69,7 @@ class SKLearnPipelineMaker:
 
   def _getCatEncoder(self) -> T.Union[TargetEncoder, OneHotEncoder]:
 
-    catEncoderStrat := self.trainParams['cat_encoder_strat']
+    catEncoderStrat = self.trainParams['cat_encoder_strat']
       
     if catEncoderStrat == 'target':
       return TargetEncoder(priorFrac=0.1)
@@ -78,7 +80,9 @@ class SKLearnPipelineMaker:
     else:
       raise ValueError(f'{catEncoderStrat=} not recognized')
       
-  def _makeGBCEstimator(self, processorPipe) -> RandomizedSearchCV: 
+  def _makeGBCEstimator(
+    self, processorPipe: ColumnTransformer
+  ) -> RandomizedSearchCV: 
     
     estimatorPipe = Pipeline([
       ('processor', processorPipe),

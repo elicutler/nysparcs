@@ -8,6 +8,7 @@ from pathlib import Path
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from sodapy import Socrata
+from safe_dict import SafeDict
 from utils import parseSecrets
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class DataReader(EnforceOverrides):
   
-  def __init__(self, trainParams):
+  def __init__(self, trainParams: SafeDict):
     self.trainParams = trainParams.copy()
   
   @abstractmethod
@@ -23,16 +24,20 @@ class DataReader(EnforceOverrides):
     pass
   
   @abstractmethod
-  def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
+  def _readNumRowsFromStartRow(
+    self, startRow: int, numRows: int
+  ) -> pd.DataFrame:
     pass
   
 
 class LocalOrS3DataReader(DataReader):
   
-  def __init__(self, trainParams):
+  def __init__(self, trainParams: SafeDict):
     super().__init__(trainParams)
     
-    self.dataLoc = 'local' if self.trainParams['local_data_path'] is not None else 's3'
+    self.dataLoc = (
+      'local' if self.trainParams['local_data_path'] is not None else 's3'
+    )
     
     if self.dataLoc == 'local':
       self.dataPath = Path(trainParams['local_data_path'])
@@ -61,7 +66,9 @@ class LocalOrS3DataReader(DataReader):
     return df
 
   @overrides
-  def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
+  def _readNumRowsFromStartRow(
+    self, startRow: int, numRows: int
+  ) -> pd.DataFrame:
     
     colNames = pd.read_csv(self.dataPath, nrows=0).columns
     df = pd.read_csv(
@@ -73,7 +80,7 @@ class LocalOrS3DataReader(DataReader):
 
 class SocrataDataReader(DataReader):
   
-  def __init__(self, trainParams):
+  def __init__(self, trainParams: SafeDict):
     super().__init__(trainParams)
     self.socrataConn = self._establishSocrataConn()
     
@@ -97,7 +104,9 @@ class SocrataDataReader(DataReader):
     return df
     
   @overrides
-  def _readNumRowsFromStartRow(self, startRow, numRows) -> pd.DataFrame:
+  def _readNumRowsFromStartRow(
+    self, startRow: int, numRows: int
+  ) -> pd.DataFrame:
     
     socrataDataKey = self.trainParams['socrata_data_key']
     dataRecs = self.socrataConn.get(
@@ -114,7 +123,7 @@ class SocrataDataReader(DataReader):
 class DataReaderFactory:
   
   @staticmethod
-  def make(trainParams) -> T.Type[DataReader]:
+  def make(trainParams: SafeDict) -> T.Type[DataReader]:
     
     if trainParams['local_data_path'] is not None:
       dataLoc = 'local'

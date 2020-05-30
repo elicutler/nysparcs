@@ -9,12 +9,13 @@ import torch
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from torch.utils.data import DataLoader
-from artifacts_io_handler import ArtifactsIOHandler
+from artifacts_io_handler import ArtifactsIOHandler, ArtifactsMessage
 from model_manager import ModelManager
 from data_processor import DataProcessorFactory
 from torch_models import ModelArchitectureFactory
 from torch_dataset import TorchDataset
 from eval_no_grad import EvalNoGrad
+from safe_dict import SafeDict
 from utils import getProcessingDevice, getNumWorkers
 
 
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 class Predictor(EnforceOverrides):
   
   @abstractmethod
-  def __init__(self, predParams, artifactsMessage):
+  def __init__(self, predParams: SafeDict, artifactsMessage: ArtifactsMessage):
     self.predParams = predParams.copy()
     self.artifactsMessage = artifactsMessage
     
@@ -66,7 +67,7 @@ class Predictor(EnforceOverrides):
 class PytorchPredictor(Predictor):
   
   @overrides
-  def __init__(self, predParams, artifactsMessage):
+  def __init__(self, predParams: SafeDict, artifactsMessage: ArtifactsMessage):
     super().__init__(predParams, artifactsMessage)
     self.modelArchitecture = (
       ModelArchitectureFactory.make(artifactsMessage.meta['model_name'])
@@ -108,7 +109,7 @@ class PytorchPredictor(Predictor):
 class SKLearnPredictor(Predictor):
   
   @overrides
-  def __init__(self, predParams, artifactsMessage):
+  def __init__(self, predParams: SafeDict, artifactsMessage: ArtifactsMessage):
     super().__init__(predParams, artifactsMessage)
     
   @overrides
@@ -124,7 +125,7 @@ class SKLearnPredictor(Predictor):
 class PredictorFactory:
   
   @staticmethod
-  def make(predParams) -> T.Type[Predictor]:
+  def make(predParams: SafeDict) -> T.Type[Predictor]:
     
     if (modelName := predParams['model_name']) is not None:
       

@@ -39,8 +39,7 @@ class TargetEncoder(BaseEstimator, TransformerMixin):
     self.priorFrac = priorFrac
     
   def fit(
-    self, 
-    X: T.Union[pd.DataFrame, np.array], 
+    self, X: T.Union[pd.DataFrame, np.array], 
     y: T.Union[pd.Series, np.array]
   ) -> 'TargetEncoder':
     '''

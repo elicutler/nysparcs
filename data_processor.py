@@ -20,7 +20,7 @@ class DataProcessor(EnforceOverrides):
     self.dfIsProcessed = False
     
   @final
-  def loadDF(self, inDF) -> None:
+  def loadDF(self, inDF: pd.DataFrame) -> None:
     self.df = inDF.copy()
     
     if self.dfIsProcessed is True:
@@ -56,11 +56,11 @@ class DataProcessor(EnforceOverrides):
     self.dfIsProcessed = True
     
   @final
-  def _sanitizeColNames(self) -> T.List[str]:
+  def _sanitizeColNames(self) -> T.Sequence[str]:
     return [self._sanitizeString(c) for c in self.df.columns]
   
   @final
-  def _sanitizeString(self, string) -> str:
+  def _sanitizeString(self, string: str) -> str:
     s = string.lower()
     s = re.sub('^\W+', '', s)
     s = re.sub('\W+$', '', s)
@@ -180,7 +180,7 @@ class DataProcessor(EnforceOverrides):
       self.df.loc[self.df[c] < 0, c] = np.nan
     
   @final
-  def _filterNumericOutliers(self, quantile=0.99) -> None:
+  def _filterNumericOutliers(self, quantile: float=0.99) -> None:
     numCols = [
       c for c in self.df.columns 
       if is_numeric_dtype(self.df[c]) 
@@ -204,13 +204,13 @@ class DataProcessor(EnforceOverrides):
 class TrainDataProcessor(DataProcessor):
   
   @overrides
-  def __init__(self, featureCols, targetCol):
+  def __init__(self, featureCols: T.Sequence[str], targetCol: T.Sequence[str]):
     super().__init__()
     self.featureCols = featureCols
     self.targetCol = targetCol
     self.trainingMode = True
     
-  def getTrainValDFs(self) -> T.Tuple[pd.DataFrame]:
+  def getTrainValDFs(self) -> T.Sequence[pd.DataFrame]:
     
     trainDF = (
       self.df[self.df['train_val'] == 'train']
@@ -228,7 +228,7 @@ class TrainDataProcessor(DataProcessor):
 class PredictDataProcessor(DataProcessor):
   
   @overrides
-  def __init__(self, featureCols):
+  def __init__(self, featureCols: T.Sequence[str]):
     super().__init__()
     self.featureCols = featureCols
     self.trainingMode = False
@@ -239,7 +239,9 @@ class PredictDataProcessor(DataProcessor):
 class DataProcessorFactory:
   
   @staticmethod
-  def make(featureCols, targetCol=None) -> T.Type[DataProcessor]:
+  def make(
+    featureCols: T.Sequence[str], targetCol: T.Optional[str]=None
+  ) -> T.Type[DataProcessor]:
     
     if targetCol is not None:
       return TrainDataProcessor(featureCols, targetCol)

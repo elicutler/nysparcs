@@ -75,7 +75,9 @@ class TrainArgParser:
       )
     )
     
-  def parseArgs(self, argsInput=None) -> argparse.Namespace:
+  def parseArgs(
+    self, argsInput: T.Optional[T.Sequence[str]]=None
+  ) -> argparse.Namespace:
     
     rawArgs = self.parser.parse_args(args=argsInput)
     
@@ -87,7 +89,7 @@ class TrainArgParser:
     self._validateArgs(args)
     return args
   
-  def _parseArgsFromRunID(self, runID) -> argparse.Namespace:
+  def _parseArgsFromRunID(self, runID: str) -> argparse.Namespace:
     
     with open('run_id_store.json') as file:
       runConfigs = json.load(file)
@@ -98,7 +100,9 @@ class TrainArgParser:
     self._validateArgs(args)
     return args
   
-  def _argsDictToList(self, runConfigs, runID) -> T.List[str]:
+  def _argsDictToList(
+    self, runConfigs: T.Mapping[str, T.Mapping], runID: str
+  ) -> T.List[str]:
     '''
     Convert {'key': <values any type> <, ...>} 
     to ['--key' <, 'v1'> <, ..., 'vn'> <, ...>]
@@ -114,7 +118,7 @@ class TrainArgParser:
     argsList = [e for t in listOfTuples for e in t]
     return argsList
 
-  def _validateArgs(self, args) -> None:
+  def _validateArgs(self, args: argparse.Namespace) -> None:
         
     assert args.target in TARGET_OPTIONS
     # categorical feature encoding

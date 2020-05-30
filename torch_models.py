@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class CatEmbedNet(nn.Module):
   
-  def __init__(self, featureNames):
+  def __init__(self, featureNames: T.Sequence[str]):
     super().__init__()
     self.featureNames = featureNames
     self.catFeatureIndexRangeMap = self._makeCatFeatureIndexRangeMap()
@@ -30,7 +30,7 @@ class CatEmbedNet(nn.Module):
     self.fullyConnectedLayer2 = nn.Linear(Layer0NodesOut, 1)
     self.activationLayer2 = None
   
-  def forward(self, X) -> torch.Tensor:
+  def forward(self, X: torch.Tensor) -> torch.Tensor:
     
     numLayer = X[:, self.numFeatureIndexRange[0]:self.numFeatureIndexRange[1]]
     catSubsets = []
@@ -48,13 +48,13 @@ class CatEmbedNet(nn.Module):
     
     return X
     
-  def _makeCatFeatureIndexRangeMap(self) -> T.Dict[str, T.Tuple[int]]:
+  def _makeCatFeatureIndexRangeMap(self) -> T.Mapping[str, T.Tuple[int]]:
     catFeatures = sorted({
       c.group() for f in self.featureNames 
       if (c := re.search('^x\d+_', f))
     })
     catFeatureIndexRangeMap = {
-      c: utils.getMinMaxIndicesOfItemInList(c, self.featureNames, startsWith=True)
+      c: utils.getMinMaxIndicesOfItemInSeq(c, self.featureNames, startsWith=True)
       for c in catFeatures
     }
     return catFeatureIndexRangeMap
@@ -63,7 +63,7 @@ class CatEmbedNet(nn.Module):
     allIndices = utils.flattenNestedSeq(self.catFeatureIndexRangeMap.values())
     return min(allIndices)
   
-  def _makeCatEmbeddingLayers(self) -> dict:
+  def _makeCatEmbeddingLayers(self) -> T.Mapping[str, T.Sequence[int]]:
     
     catEmbeddingLayers = {}
     for catFeature, (idxMin, idxMax) in self.catFeatureIndexRangeMap.items():
@@ -86,7 +86,7 @@ class CatEmbedNet(nn.Module):
 class ModelArchitectureFactory:
   
   @staticmethod
-  def make(architecture) -> T.Type[nn.Module]:
+  def make(architecture: str) -> T.Type[nn.Module]:
   
     if architecture == 'CatEmbedNet':
       return CatEmbedNet

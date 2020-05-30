@@ -23,7 +23,7 @@ class ModelManager:
     self.artifactsIOHandler = ArtifactsIOHandler()    
     self.session = SessionManager().getSagemakerSession()
   
-  def getBestModel(self, target, evalMetric) -> ArtifactsMessage:
+  def getBestModel(self, target: str, evalMetric: str) -> ArtifactsMessage:
     
     s3ArtifactsTargetPath = (
       self.artifactsIOHandler.s3ArtifactsPath + f'{target}/'

@@ -15,7 +15,7 @@ from constants import SECRETS_INI
 logger = logging.getLogger(__name__)
     
   
-def parseSecrets() -> T.Dict[str, str]:
+def parseSecrets() -> T.Mapping[str, str]:
   config = ConfigParser()
   config.read(SECRETS_INI)
   secrets = {
@@ -25,7 +25,7 @@ def parseSecrets() -> T.Dict[str, str]:
   return secrets
   
 
-def getNumWorkers(numWorkers) -> int:
+def getNumWorkers(numWorkers: T.Optional[int]) -> int:
   return multiprocessing.cpu_count() - 1 if numWorkers == -1 else numWorkers
 
 
@@ -33,18 +33,21 @@ def getProcessingDevice() -> str:
   return 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-def getMinMaxIndicesOfItemInList(item, list_, startsWith=False)  -> T.Tuple[int]:
+def getMinMaxIndicesOfItemInSeq(
+  item: str, seq: T.Sequence, startsWith: bool=False
+)  -> T.Sequence[int]:
+  
   if startsWith:
     itemIndices = [
-      i for i, el in enumerate(list_) if el.startswith(item)
+      i for i, el in enumerate(seq) if el.startswith(item)
     ]
   else:
-    itemIndices = [i for i, el in enumerate(list_) if i == el]
+    itemIndices = [i for i, el in enumerate(seq) if i == el]
   
   return itemIndices[0], itemIndices[-1]
 
 
-def flattenNestedSeq(seq) -> list:
+def flattenNestedSeq(seq: T.Sequence) -> list:
   flattened = [j for i in seq for j in i]
   if isinstance((el := flattened[0]), Sequence) and not isinstance(el, str):
     flattened = flattenNestedSeq(flattened)

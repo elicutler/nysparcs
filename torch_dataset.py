@@ -24,7 +24,9 @@ class TorchDataset(Dataset):
   def __len__(self) -> int:
     return self.df.shape[0]
   
-  def __getitem__(self, idx) -> T.Union[T.Tuple[torch.Tensor], torch.Tensor]:
+  def __getitem__(
+    self, idx: int
+  ) -> T.Union[T.Sequence[torch.Tensor], torch.Tensor]:
 
     inputDF = self._makeInputDF()
     featureInputs = inputDF.iloc[idx].to_frame().transpose()

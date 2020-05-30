@@ -30,16 +30,16 @@ class ArtifactsIOHandler:
     self.s3BucketPath = f"s3://{parseSecrets()['s3_bucket']}/"
     self.s3ArtifactsPath = self.s3BucketPath + LOCAL_ARTIFACTS_PATH
   
-  def save(self, artifactsMessage) -> None:
+  def save(self, artifactsMessage: ArtifactsMessage) -> None:
     artifactsPathLocal = self._saveToLocal(artifactsMessage)
     self._saveToS3(artifactsPathLocal)
     
-  def load(self, artifactsName) -> ArtifactsMessage:
+  def load(self, artifactsName: str) -> ArtifactsMessage:
     artifactsPathLocal = self._loadFromS3(artifactsName)
     artifactsMessage = self._loadFromLocal(artifactsPathLocal)
     return artifactsMessage
   
-  def _saveToLocal(self, artifactsMessage) -> str:
+  def _saveToLocal(self, artifactsMessage: ArtifactsMessage) -> str:
     '''
     Save artifacts locally and return path
     '''
@@ -67,7 +67,7 @@ class ArtifactsIOHandler:
     logger.info(f'Model artifact saved to local file: {artifactsPath}')
     return artifactsPath
   
-  def _saveToS3(self, artifactsPathLocalStr) -> None:
+  def _saveToS3(self, artifactsPathLocalStr: str) -> None:
     artifactsPathLocal = pathlib.Path(artifactsPathLocalStr)
     s3Path = self.s3BucketPath + str(artifactsPathLocal.parent)
     S3Uploader.upload(artifactsPathLocalStr, s3Path)
@@ -76,7 +76,7 @@ class ArtifactsIOHandler:
       f' {s3Path}/{artifactsPathLocal.stem}{artifactsPathLocal.suffix}'
     )
     
-  def _loadFromS3(self, modelName) -> str:
+  def _loadFromS3(self, modelName: str) -> str:
     allArtifactsS3 = (
       S3Downloader.list(self.s3ArtifactsPath)
     )
@@ -102,7 +102,7 @@ class ArtifactsIOHandler:
     )
     return artifactsPathLocal
   
-  def _loadFromLocal(self, artifactsPathLocalStr) -> ArtifactsMessage:
+  def _loadFromLocal(self, artifactsPathLocalStr: str) -> ArtifactsMessage:
     artifactsPath = pathlib.Path(artifactsPathLocalStr)
     
     if artifactsPath.suffix == '.pt':

@@ -24,6 +24,7 @@ from eval_no_grad import EvalNoGrad
 from utils import getNumWorkers, getProcessingDevice
 from constants import FIXED_SEED
 from sklearn_pipelines import SKLearnPipelineMaker
+from safe_dict import SafeDict
 
 logger = logging.getLogger(__name__)
     
@@ -51,7 +52,9 @@ class Trainer(EnforceOverrides):
     pass
 
   @final
-  def _calcPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
+  def _calcPerformanceMetrics(
+    self, actuals: pd.Series, preds: np.ndarray
+  ) -> T.Mapping[str, float]:
     
     if (targetType := self.trainParams['target_type']) == 'binary':
       perfCalculator = self._calcBinaryPerformanceMetrics
@@ -67,7 +70,9 @@ class Trainer(EnforceOverrides):
     return metrics
       
   @final
-  def _calcBinaryPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
+  def _calcBinaryPerformanceMetrics(
+    self, actuals: pd.Series, preds: np.ndarray
+  ) -> T.Mapping[str, float]:
     metrics = {
       'confusion_matrix': confusion_matrix(actuals, preds >= 0.5),
       'roc_auc': roc_auc_score(actuals, preds),
@@ -78,7 +83,9 @@ class Trainer(EnforceOverrides):
     return metrics
   
   @final
-  def _calcRegressionPerformanceMetrics(self, actuals, preds) -> T.Dict[str, float]:
+  def _calcRegressionPerformanceMetrics(
+    self, actuals: pd.Series, preds: np.ndarray
+  ) -> T.Mapping[str, float]:
     metrics = {
       'mean_abs_err': mean_absolute_error(actuals, preds),
       'med_abs_err': median_absolute_error(actuals, preds),
@@ -92,7 +99,7 @@ class Trainer(EnforceOverrides):
 class TorchTrainer(Trainer):
 
   @overrides
-  def __init__(self, trainParams):
+  def __init__(self, trainParams: SafeDict):
     super().__init__(trainParams)
     self.sklearnProcessor = SKLearnProcessor(trainParams)
     self.modelArchitecture = (
@@ -243,7 +250,7 @@ class TorchTrainer(Trainer):
     
 class SKLearnTrainer(Trainer):
   
-  def __init__(self, trainParams):
+  def __init__(self, trainParams: SafeDict):
     super().__init__(trainParams)
     self.sklearnPipelineMaker = SKLearnPipelineMaker(trainParams)
     
@@ -300,7 +307,7 @@ class SKLearnTrainer(Trainer):
 class TrainerFactory:
   
   @staticmethod
-  def make(trainParams) -> T.Type[Trainer]:
+  def make(trainParams: SafeDict) -> T.Type[Trainer]:
     
     modelType = (
       'pytorch' if trainParams['pytorch_model'] is not None else 'sklearn'

@@ -44,7 +44,7 @@ class PredictArgParser:
     self._validateArgs(args)
     return args
   
-  def _validateArgs(self, args) -> None:
+  def _validateArgs(self, args: argparse.Namespace) -> None:
     
     # Load model by name XOR best model
     assert bool(args.model_name) + bool(args.best_model) == 1
