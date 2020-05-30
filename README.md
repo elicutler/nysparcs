@@ -1,7 +1,6 @@
-Build the docker image: `docker build -t elicutler/nysparcs .` 
-Run the docker image: `docker run "$(docker images elicutler/nysparcs -q)" <commands to execute from within nysparcs conda env>`
+Build the docker image: `docker build -t elicutler/nysparcs .`  
 
-After building the docker image, to run the container, pass all commands to be executed from the `nysparcs` conda environment into `docker run`.
+Run the docker image: `docker run --rm "$(docker image list elicutler/nysparcs -q)" <command to execute within nysparcs conda env>`
 
 For API access to data, create `.config/secrets.json`, with the following structure:
 ```
