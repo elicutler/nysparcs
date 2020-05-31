@@ -54,6 +54,8 @@ Alternatively, a particular trained model can be specified to use for prediction
 ```
 python predict.py --model_name gradient_boosting_classifier_20200529012925213000 --instances test_instances.json
 ```
+JSON instances can alternatively be passed directly to the `--instances` command line argument.
+
 Documentation on the `predict.py` parameters can be obtained by running `python predict.py --help`.
 
 # Docker (in progress)
