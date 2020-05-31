@@ -44,7 +44,7 @@ source_of_payment_1 source_of_payment_2 emergency_department_indicator total_cha
 --train_range 100 2000 \
 --val_range 5001 6000
 ```
-Documentation on the parameters can be obtained by running `python train.py --help`.
+Documentation on the `train.py` parameters can be obtained by running `python train.py --help`.
 
 Generate predictions from a trained model, given a file of JSON instances. The program can select the best trained model to use given a target variable and evaluation metric:
 ```
@@ -54,6 +54,7 @@ Alternatively, a particular trained model can be specified to use for prediction
 ```
 python predict.py --model_name gradient_boosting_classifier_20200529012925213000 --instances test_instances.json
 ```
+Documentation on the `predict.py` parameters can be obtained by running `python predict.py --help`.
 
 # Docker (in progress)
 
@@ -74,4 +75,4 @@ docker run --rm "$(docker image list elicutler/nysparcs -q)" <train.py or predic
 # Directions for future development
 * Handle AWS permissions
 * Add model monitoring
-
+* Add tests, trigger via github actions
