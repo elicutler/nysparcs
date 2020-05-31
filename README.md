@@ -3,7 +3,7 @@
 This repository provides a framework for model training and predicting with the [NY SPARCS dataset](https://health.data.ny.gov/Health/Hospital-Inpatient-Discharges-SPARCS-De-Identified/q6hk-esrj/), a dataset of hospital inpatient discharges. This framework makes it easy to add new types of predictive models, as well as predict on different targets with different feature combinations. 
 
 # Getting started
-You must create the file `.config/secrets.ini`. The suggested format is as follows:
+You must create the file `.config/secrets.ini`:
 ```
 [nysparcs]
 region_name = <...>
