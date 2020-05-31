@@ -78,3 +78,4 @@ docker run --rm "$(docker image list elicutler/nysparcs -q)" <train.py or predic
 * Handle AWS permissions
 * Add model monitoring
 * Add tests, trigger via github actions
+* Add hyperparameter optimization
