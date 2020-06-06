@@ -21,6 +21,10 @@ class SessionManager:
     self.sagemakerSession = sagemaker.session.Session(
       boto_session=boto3Session
     )
+    logger.info('SESSION MANAGER INIT')
+    logger.info(f"AWS_ACCESS_KEY_ID: {secrets.get('aws_access_key_id')}")
+    logger.info(f"AWS_SECRET_ACCESS_KEY: {secrets.get('aws_secret_access_key')}")
+    logger.info(f"REGION_NAME: {secrets['region_name']}")
     
   def getSagemakerSession(self) -> sagemaker.session.Session:
     return self.sagemakerSession

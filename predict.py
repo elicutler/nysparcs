@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
   
+  from sagemaker import get_execution_role
+  role = get_execution_role()
+  print(f'ROLE:\n{role}')
+  
   logger.info('Making predictions...')
   
   parser = PredictArgParser()

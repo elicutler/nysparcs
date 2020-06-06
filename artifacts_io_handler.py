@@ -26,7 +26,7 @@ ArtifactsMessage = namedtuple('ArtifactsMessage', ['meta', 'artifacts'])
 class ArtifactsIOHandler:
   
   def __init__(self):
-    self.session = SessionManager().getSagemakerSession()
+#     self.session = SessionManager().getSagemakerSession()
     self.s3BucketPath = f"s3://{parseSecrets()['s3_bucket']}/"
     self.s3ArtifactsPath = self.s3BucketPath + LOCAL_ARTIFACTS_PATH
   
@@ -71,6 +71,7 @@ class ArtifactsIOHandler:
     artifactsPathLocal = pathlib.Path(artifactsPathLocalStr)
     s3Path = self.s3BucketPath + str(artifactsPathLocal.parent)
     S3Uploader.upload(artifactsPathLocalStr, s3Path)
+#     S3Uploader.upload(artifactsPathLocalStr, s3Path, session=self.session)
     logger.info(
       'Model artifact saved to s3:'
       f' {s3Path}/{artifactsPathLocal.stem}{artifactsPathLocal.suffix}'
@@ -79,6 +80,7 @@ class ArtifactsIOHandler:
   def _loadFromS3(self, modelName: str) -> str:
     allArtifactsS3 = (
       S3Downloader.list(self.s3ArtifactsPath)
+#       S3Downloader.list(self.s3ArtifactsPath, session=self.session)
     )
     
     matchingArtifactsS3 = [
@@ -96,6 +98,7 @@ class ArtifactsIOHandler:
     )
     artifactsParentPathLocal = pathlib.Path(artifactsPathLocal).parent
     S3Downloader.download(artifactsPathS3, artifactsParentPathLocal)
+#     S3Downloader.download(artifactsPathS3, artifactsParentPathLocal, session=self.session)
     
     logger.info(
       f'Downloaded artifact from {artifactsPathS3} to {artifactsPathLocal}'

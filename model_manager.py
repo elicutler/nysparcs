@@ -30,6 +30,7 @@ class ModelManager:
     )
     s3ModelPaths = (
       S3Downloader.list(s3ArtifactsTargetPath)
+#       S3Downloader.list(s3ArtifactsTargetPath, session=self.session)
     )
     modelNames = [Path(model).stem for model in s3ModelPaths]
     
