@@ -1,29 +1,38 @@
 # Overview
 
-This repository provides a framework for model training and predicting with the [NY SPARCS dataset](https://health.data.ny.gov/Health/Hospital-Inpatient-Discharges-SPARCS-De-Identified/q6hk-esrj/), a dataset of hospital inpatient discharges. This framework makes it easy to add new types of predictive models, as well as predict on different targets with different feature combinations. 
+This repository provides a framework for model training and predicting on an Amazon EC2 instance (most conveniently via Amazon SageMaker) with the [NY SPARCS dataset](https://health.data.ny.gov/Health/Hospital-Inpatient-Discharges-SPARCS-De-Identified/q6hk-esrj/), a dataset of hospital inpatient discharges. This framework makes it easy to add new types of predictive models, as well as predict on different targets with different feature combinations. 
 
-# Getting started
-You must create the file `.config/secrets.ini`:
+# Preliminaries
+
+You must have the following:
+* an AWS role with permissions to read from and write to S3
+* an AWS user account with permissions to assume the above AWS role
+* an S3 bucket for storing model artifacts
+* a [Socrata app token](https://opendata.socrata.com/profile/edit/developer_settings) (only required for downloading the NYSPARCS data via the API)
+
+Set the following environment variables:
 ```
-[nysparcs]
-region_name = <...>
-s3_bucket = <...>
-socrata_app_token = <...> # optional
-aws_access_key_id = <...> # optional
-aws_secret_access_key = <...> # optional
+export S3_BUCKET=<S3 bucket>
+export AWS_ACCESS_KEY_ID=<user account AWS access key ID>
+export AWS_SECRET_ACCESS_KEY=<user account AWS secret access key>
+export AWS_CONFIG_FILE=.config/aws.ini
+export SOCRATA_APP_TOKEN=<your Socrata app token>
 ```
-Passing a `socrata_app_token` is only necessary if passing params to `train.py` instructing it to download the dataset via the Socrata API. Note that support for AWS credentials is still in development, so passing them is optional. 
+Ensure that the `role_arn` in `.config/aws.ini` is set to the role that can read from and write to S3.
+
+# Running without Docker
 
 Create the `nysparcs` conda environment and activate it:
 ```
 conda env create --file environment.yaml
 conda activate nysparcs
 ```
-Alternatively, the conda environment can be created and other configurations can be handled by running `.config/startup.sh` in the main shell, i.e. `source .config/startup.sh`. You should review the configurations in this file and change anything to suit your preferences. At minimum, change the github identity.
 
 You are now ready to execute the `train.py` and `predict.py` programs.
 
 # Sample usage
+
+## Train
 
 Train a model from a JSON config located in `run_id_store.json`:
 ```
@@ -58,24 +67,29 @@ JSON instances can alternatively be passed directly to the `--instances` command
 
 Documentation on the `predict.py` parameters can be obtained by running `python predict.py --help`.
 
-# Docker (in progress)
-
-*NOTE: the Docker approach is not yet functional, as the codebase needs to be modified to pass AWS credentials to the docker container.*
-
-As an alternative to the afore-mentioned approach, the environment can also be created and executed using Docker, as follows. Note that the `.config/secrets.ini` file must still be created before building the docker image.
+# Running with Docker
 
 Build the docker image:  
 ```
 docker build -t elicutler/nysparcs .
 ```  
 
-Run the docker image:  
+When running with Docker, all of the aforementioned environment variables must be passed to the container, with the exception of `AWS_CONFIG_FILE` which is set during the Docker build. Passing environment variables can be accomplished with the `-e` argument, or more conveniently, by storing them in a file to be referenced with the `--env-file` argument.
+
+In the latter case, you must create the file, e.g. `.config/env_secrets`:
 ```
-docker run --rm "$(docker image list elicutler/nysparcs -q)" <train.py or predict.py with command line args>
+S3_BUCKET=<S3 bucket>
+AWS_ACCESS_KEY_ID=<user account AWS access key ID>
+AWS_SECRET_ACCESS_KEY=<user account AWS secret access key>
+SOCRATA_APP_TOKEN=<your Socrata app token>
+```
+
+Then you can run the docker image with: 
+```
+docker run --env-file .config/env_secrets --rm "$(docker image list elicutler/nysparcs -q)" <train.py or predict.py with command line args>
 ```
 
 # Directions for future development
-* Handle AWS permissions
-* Add model monitoring
 * Add tests, trigger via github actions
+* Add model monitoring
 * Add advanced hyperparameter optimization techniques (genetic algorithms, Bayesian optimization)
