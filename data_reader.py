@@ -3,13 +3,13 @@ import typing as T
 import logging
 import pandas as pd
 import json
+import os
 
 from pathlib import Path
 from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from sodapy import Socrata
 from safe_dict import SafeDict
-from utils import parseSecrets
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,8 @@ class LocalOrS3DataReader(DataReader):
       self.dataPath = Path(trainParams['local_data_path'])
     
     elif self.dataLoc == 's3':
-      s3Prefix = Path(f"s3://{parseSecrets()['s3_bucket']}/nysparcs/")
+      s3Bucket = os.getenv('S3_BUCKET')
+      s3Prefix = Path(f's3://{s3Bucket}/nysparcs/')
       self.dataPath = s3Prefix/trainParams['s3_data_path']
     
   @overrides
@@ -116,7 +117,7 @@ class SocrataDataReader(DataReader):
     return df
   
   def _establishSocrataConn(self) -> Socrata:
-    appToken = parseSecrets()['socrata_app_token']
+    appToken = os.getenv('SOCRATA_APP_TOKEN')
     return Socrata('health.data.ny.gov', appToken)
                 
 

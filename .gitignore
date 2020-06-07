@@ -3,4 +3,4 @@ __pycache__/
 artifacts/
 !artifacts/**/.gitkeep
 *.csv
-secrets.ini
+env_secrets

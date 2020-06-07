@@ -1,9 +1,9 @@
 
 import logging
 import pathlib
+import os
 
 from sagemaker.s3 import S3Downloader
-from utils import parseSecrets
 from constants import LOCAL_DATA_PATH, DATA_FILE
 
 logging.basicConfig(
@@ -17,7 +17,7 @@ def downloadDataFileLocally() -> None:
   '''
   Download the dataset from s3 to local.
   '''
-  s3Bucket = parseSecrets()['s3_bucket']
+  s3Bucket = os.getenv('S3_BUCKET')
   s3Path = f's3://{s3Bucket}/{LOCAL_DATA_PATH}{DATA_FILE}'
   
   if not pathlib.os.path.exists(f'{LOCAL_DATA_PATH}/{DATA_FILE}'):

@@ -4,6 +4,7 @@ import logging
 import pathlib
 import pickle
 import re
+import os
 import torch
 
 from collections import OrderedDict, namedtuple
@@ -11,8 +12,7 @@ from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from sagemaker.s3 import S3Uploader, S3Downloader
 from botocore.exceptions import ClientError
-from session_manager import SessionManager
-from utils import parseSecrets, nowTimestampStr
+from utils import nowTimestampStr
 from constants import LOCAL_ARTIFACTS_PATH
 
 logger = logging.getLogger(__name__)
@@ -26,8 +26,8 @@ ArtifactsMessage = namedtuple('ArtifactsMessage', ['meta', 'artifacts'])
 class ArtifactsIOHandler:
   
   def __init__(self):
-    self.session = SessionManager().getSagemakerSession()
-    self.s3BucketPath = f"s3://{parseSecrets()['s3_bucket']}/"
+    s3Bucket = os.getenv('S3_BUCKET')
+    self.s3BucketPath = f's3://{s3Bucket}/'
     self.s3ArtifactsPath = self.s3BucketPath + LOCAL_ARTIFACTS_PATH
   
   def save(self, artifactsMessage: ArtifactsMessage) -> None:
@@ -77,9 +77,7 @@ class ArtifactsIOHandler:
     )
     
   def _loadFromS3(self, modelName: str) -> str:
-    allArtifactsS3 = (
-      S3Downloader.list(self.s3ArtifactsPath)
-    )
+    allArtifactsS3 = S3Downloader.list(self.s3ArtifactsPath)
     
     matchingArtifactsS3 = [
       a for a in allArtifactsS3
