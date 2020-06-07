@@ -4,8 +4,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-SECRETS_INI = '.config/secrets.ini'
-
 LOCAL_ARTIFACTS_PATH = 'artifacts/'
 LOCAL_DATA_PATH = 'data/'
 DATA_FILE = 'Hospital_Inpatient_Discharges__SPARCS_De-Identified___2009.csv'

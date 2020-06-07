@@ -12,4 +12,6 @@ RUN conda env create --file .config/environment.yaml
 
 COPY . .
 
+ENV AWS_CONFIG_FILE .config/aws.ini
+
 ENTRYPOINT ["conda", "run", "--name", "nysparcs"]

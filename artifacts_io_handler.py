@@ -4,6 +4,7 @@ import logging
 import pathlib
 import pickle
 import re
+import os
 import torch
 
 from collections import OrderedDict, namedtuple
@@ -11,8 +12,7 @@ from abc import abstractmethod
 from overrides import EnforceOverrides, overrides, final
 from sagemaker.s3 import S3Uploader, S3Downloader
 from botocore.exceptions import ClientError
-from session_manager import SessionManager
-from utils import parseSecrets, nowTimestampStr
+from utils import nowTimestampStr
 from constants import LOCAL_ARTIFACTS_PATH
 
 logger = logging.getLogger(__name__)
@@ -26,8 +26,8 @@ ArtifactsMessage = namedtuple('ArtifactsMessage', ['meta', 'artifacts'])
 class ArtifactsIOHandler:
   
   def __init__(self):
-#     self.session = SessionManager().getSagemakerSession()
-    self.s3BucketPath = f"s3://{parseSecrets()['s3_bucket']}/"
+    s3Bucket = os.getenv('S3_BUCKET')
+    self.s3BucketPath = f's3://{s3Bucket}/'
     self.s3ArtifactsPath = self.s3BucketPath + LOCAL_ARTIFACTS_PATH
   
   def save(self, artifactsMessage: ArtifactsMessage) -> None:
@@ -71,17 +71,13 @@ class ArtifactsIOHandler:
     artifactsPathLocal = pathlib.Path(artifactsPathLocalStr)
     s3Path = self.s3BucketPath + str(artifactsPathLocal.parent)
     S3Uploader.upload(artifactsPathLocalStr, s3Path)
-#     S3Uploader.upload(artifactsPathLocalStr, s3Path, session=self.session)
     logger.info(
       'Model artifact saved to s3:'
       f' {s3Path}/{artifactsPathLocal.stem}{artifactsPathLocal.suffix}'
     )
     
   def _loadFromS3(self, modelName: str) -> str:
-    allArtifactsS3 = (
-      S3Downloader.list(self.s3ArtifactsPath)
-#       S3Downloader.list(self.s3ArtifactsPath, session=self.session)
-    )
+    allArtifactsS3 = S3Downloader.list(self.s3ArtifactsPath)
     
     matchingArtifactsS3 = [
       a for a in allArtifactsS3
@@ -98,7 +94,6 @@ class ArtifactsIOHandler:
     )
     artifactsParentPathLocal = pathlib.Path(artifactsPathLocal).parent
     S3Downloader.download(artifactsPathS3, artifactsParentPathLocal)
-#     S3Downloader.download(artifactsPathS3, artifactsParentPathLocal, session=self.session)
     
     logger.info(
       f'Downloaded artifact from {artifactsPathS3} to {artifactsPathLocal}'
