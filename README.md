@@ -12,10 +12,10 @@ You must have the following:
 
 Set the following environment variables:
 ```
+export AWS_CONFIG_FILE=.config/aws.ini
 export S3_BUCKET=<S3 bucket>
 export AWS_ACCESS_KEY_ID=<user account AWS access key ID>
 export AWS_SECRET_ACCESS_KEY=<user account AWS secret access key>
-export AWS_CONFIG_FILE=.config/aws.ini
 export SOCRATA_APP_TOKEN=<your Socrata app token>
 ```
 In `.config/aws.ini`, set `role_arn` to the role that can read from and write to S3.
