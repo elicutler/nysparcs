@@ -18,7 +18,7 @@ export AWS_SECRET_ACCESS_KEY=<user account AWS secret access key>
 export AWS_CONFIG_FILE=.config/aws.ini
 export SOCRATA_APP_TOKEN=<your Socrata app token>
 ```
-Ensure that the `role_arn` in `.config/aws.ini` is set to the role that can read from and write to S3.
+In `.config/aws.ini`, set `role_arn` to the role that can read from and write to S3.
 
 # Running without Docker
 
