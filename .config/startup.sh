@@ -5,7 +5,7 @@
 # export settings
 ipython profile create
 cp ipython_config.py ~/.ipython/profile_default/ipython_config.py
-cp -a @jupyterlab ~/.jupyter/lab/user-settings
+cp -r @jupyterlab ~/.jupyter/lab/user-settings
 cp .vimrc ~/.vimrc
 
 # build and activate conda environment
