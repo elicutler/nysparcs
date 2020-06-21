@@ -1,6 +1,6 @@
 # Overview
 
-This repository provides a framework for model training and predicting on an Amazon EC2 instance (most conveniently via Amazon SageMaker) with the [NY SPARCS dataset](https://health.data.ny.gov/Health/Hospital-Inpatient-Discharges-SPARCS-De-Identified/q6hk-esrj/), a dataset of hospital inpatient discharges. This framework makes it easy to add new types of predictive models, as well as predict on different targets with different feature combinations. 
+This repository provides a framework for model training and predicting on an Amazon SageMaker instance with the [NY SPARCS dataset](https://health.data.ny.gov/Health/Hospital-Inpatient-Discharges-SPARCS-De-Identified/q6hk-esrj/), a dataset of hospital inpatient discharges. This framework makes it easy to add new types of predictive models, as well as predict on different targets with different feature combinations. 
 
 # Preliminaries
 
