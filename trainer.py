@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 class Trainer(EnforceOverrides):
   
   @abstractmethod
-  def __init__(self, trainParams):
+  def __init__(self, trainParams: SafeDict):
     self.trainParams = trainParams.copy()
     self.dataReader = DataReaderFactory.make(trainParams)
     self.dataProcessor = DataProcessorFactory.make(
